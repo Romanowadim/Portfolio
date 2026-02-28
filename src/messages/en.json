@@ -1,0 +1,72 @@
+{
+  "nav": {
+    "about": "About",
+    "portfolio": "Portfolio",
+    "equipment": "Equipment",
+    "order": "Order"
+  },
+  "hero": {
+    "name": "VADIM ROMANOV",
+    "title": "Professional Artist | Design Specialist",
+    "artworkLabel": "Self-Portrait / Roblox and Photoshop"
+  },
+  "about": {
+    "heading": "ABOUT ME",
+    "main": "MAIN",
+    "bio": "My name is Vadim Romanov. I am a graphic designer and digital artist. I create illustrations, concept art, logos, and other visual products. I work with both private clients and companies.",
+    "education": "EDUCATION",
+    "educationText": "Higher education in design",
+    "programs": "PROGRAMS",
+    "experience": "Over 5 years of experience"
+  },
+  "portfolio": {
+    "heading": "PORTFOLIO",
+    "personal": "PERSONAL",
+    "orders": "ORDERS",
+    "youtube": "YOUTUBE",
+    "other": "OTHER",
+    "gamedev": "GAMEDEV",
+    "cg": "Computer Graphics",
+    "lineart": "Line Art",
+    "backToCategories": "Back to categories",
+    "backToPortfolio": "Back to portfolio",
+    "sketch": "Sketch",
+    "final": "Final"
+  },
+  "equipment": {
+    "heading": "EQUIPMENT",
+    "processor": "Processor",
+    "memory": "Memory",
+    "storage": "Storage",
+    "display": "Display",
+    "graphics": "Graphics",
+    "size": "Size",
+    "resolution": "Resolution"
+  },
+  "order": {
+    "heading": "ORDER",
+    "name": "Your name",
+    "email": "Email",
+    "service": "Service type",
+    "description": "Project description",
+    "budget": "Budget",
+    "submit": "Send request",
+    "services": {
+      "illustration": "Illustration",
+      "logo": "Logo",
+      "concept": "Concept Art",
+      "banner": "Banner",
+      "other": "Other"
+    },
+    "success": "Request sent!",
+    "successMessage": "I will contact you shortly."
+  },
+  "comingSoon": {
+    "title": "COMING SOON",
+    "subtitle": "This section is under development"
+  },
+  "language": {
+    "ru": "RU",
+    "en": "EN"
+  }
+}
