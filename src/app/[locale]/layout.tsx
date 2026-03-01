@@ -22,18 +22,14 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body>
         <NextIntlClientProvider>
           <Header />
-          <div className="min-h-screen pt-16 flex">
+          <div className="min-h-screen relative overflow-hidden">
             {/* Left content area */}
-            <main className="w-full lg:w-[34%] px-6 md:px-10 py-10 flex flex-col">
-              <div className="flex-1">{children}</div>
+            <main className="relative z-10 w-full lg:w-[45%] px-6 md:px-10 lg:pl-[7.7%] pt-32 lg:pt-[148px] pb-10 min-h-screen flex flex-col">
+              <div className="flex-1 flex flex-col">{children}</div>
             </main>
 
-            {/* Right hero illustration area */}
-            <aside className="hidden lg:block w-[66%] relative bg-bg-dark">
-              <div className="sticky top-16 h-[calc(100vh-4rem)]">
-                <HeroImage />
-              </div>
-            </aside>
+            {/* Right hero illustration — absolutely positioned, bleeding off edges */}
+            <HeroImage />
           </div>
         </NextIntlClientProvider>
       </body>

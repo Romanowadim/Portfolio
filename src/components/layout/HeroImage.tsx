@@ -6,20 +6,18 @@ import { motion } from "framer-motion";
 export default function HeroImage() {
   return (
     <motion.div
-      initial={{ opacity: 0, x: 20 }}
+      initial={{ opacity: 0, x: 40 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className="hidden lg:flex items-center justify-center h-full"
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className="hidden lg:block absolute top-[-17vh] right-0 w-[55.8%] h-[172vh] pointer-events-none"
     >
-      <div className="relative w-full max-w-[600px] aspect-[3/4]">
-        <Image
-          src="/images/hero.png"
-          alt="Character illustration"
-          fill
-          className="object-contain"
-          priority
-        />
-      </div>
+      <Image
+        src="/images/hero.png"
+        alt="Character illustration"
+        fill
+        className="object-cover"
+        priority
+      />
     </motion.div>
   );
 }
