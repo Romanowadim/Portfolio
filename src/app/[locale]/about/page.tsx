@@ -5,68 +5,75 @@ import { motion } from "framer-motion";
 import SocialLinks from "@/components/layout/SocialLinks";
 
 const programs = [
-  { name: "Photoshop", abbr: "PS" },
-  { name: "Illustrator", abbr: "AI" },
-  { name: "Animate", abbr: "AN" },
-  { name: "Figma", abbr: "FG" },
-  { name: "Procreate", abbr: "PR" },
+  { name: "Photoshop", icon: "/images/programs/photoshop.png" },
+  { name: "Illustrator", icon: "/images/programs/illustrator.png" },
+  { name: "Animate", icon: "/images/programs/animate.png" },
+  { name: "Figma", icon: "/images/programs/figma.png" },
+  { name: "Procreate", icon: "/images/programs/procreate.png" },
 ];
 
 export default function AboutPage() {
   const t = useTranslations("about");
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex flex-col gap-10"
-    >
-      <h1 className="text-2xl md:text-3xl font-bold tracking-[0.2em]">
-        {t("heading")}
-      </h1>
+    <div className="relative z-10 flex flex-col h-full py-6 lg:py-0">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="flex flex-col gap-[40px] my-auto"
+      >
+        {/* MAIN section */}
+        <section>
+          <h2 className="text-[14px] font-bold tracking-[3.2px] text-text-muted uppercase mb-4">
+            {t("main")}
+          </h2>
+          <p className="text-[14px] font-medium leading-[20px] text-[#787878] max-w-[380px]">
+            {t("bio")}
+          </p>
+        </section>
 
-      {/* Main bio */}
-      <section>
-        <h2 className="text-xs font-bold tracking-[0.2em] text-text-secondary mb-3">
-          {t("main")}
-        </h2>
-        <p className="text-sm leading-relaxed text-text/80">
-          {t("bio")}
-        </p>
-        <p className="text-xs text-text-secondary mt-2 tracking-wider">
-          {t("experience")}
-        </p>
-      </section>
+        {/* EDUCATION section */}
+        <section>
+          <h2 className="text-[14px] font-bold tracking-[3.2px] text-text-muted uppercase mb-4">
+            {t("education")}
+          </h2>
+          <p className="text-[14px] font-medium leading-[20px] text-[#787878] max-w-[380px]">
+            {t("educationText")}
+          </p>
+        </section>
 
-      {/* Education */}
-      <section>
-        <h2 className="text-xs font-bold tracking-[0.2em] text-text-secondary mb-3">
-          {t("education")}
-        </h2>
-        <p className="text-sm text-text/80">{t("educationText")}</p>
-      </section>
+        {/* PROGRAMS section */}
+        <section>
+          <h2 className="text-[14px] font-bold tracking-[2.8px] text-text-muted uppercase mb-4">
+            {t("programs")}
+          </h2>
+          <p className="text-[14px] font-medium leading-[20px] text-[#787878] mb-6">
+            {t("programsText")}
+          </p>
+          <div className="flex items-center gap-[35px]">
+            {programs.map((p) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={p.name}
+                src={p.icon}
+                alt={p.name}
+                className="w-[35px] h-[35px] object-contain"
+              />
+            ))}
+          </div>
+        </section>
 
-      {/* Programs */}
-      <section>
-        <h2 className="text-xs font-bold tracking-[0.2em] text-text-secondary mb-4">
-          {t("programs")}
-        </h2>
-        <div className="flex flex-wrap gap-3">
-          {programs.map((prog) => (
-            <div
-              key={prog.abbr}
-              className="w-14 h-14 rounded-lg bg-white flex items-center justify-center text-xs font-bold tracking-wider text-text-secondary border border-border"
-              title={prog.name}
-            >
-              {prog.abbr}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="mt-auto pt-6">
-        <SocialLinks />
-      </div>
-    </motion.div>
+        {/* Social links — animated drop-down */}
+        <motion.div
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+          className="mt-4"
+        >
+          <SocialLinks />
+        </motion.div>
+      </motion.div>
+    </div>
   );
 }

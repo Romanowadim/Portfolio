@@ -14,20 +14,20 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-1 text-xs tracking-wider">
+    <div className="flex items-center gap-1 text-[14px] tracking-wide">
       <button
         onClick={() => switchLocale("ru")}
-        className={`px-1.5 py-0.5 transition-colors ${
-          locale === "ru" ? "text-text font-bold" : "text-text-secondary hover:text-text"
+        className={`px-1.5 py-0.5 transition-colors cursor-pointer ${
+          locale === "ru" ? "text-text-muted font-semibold" : "text-text-light hover:text-text-muted"
         }`}
       >
         {t("ru")}
       </button>
-      <span className="text-border">/</span>
+      <span className="text-text-light">/</span>
       <button
         onClick={() => switchLocale("en")}
-        className={`px-1.5 py-0.5 transition-colors ${
-          locale === "en" ? "text-text font-bold" : "text-text-secondary hover:text-text"
+        className={`px-1.5 py-0.5 transition-colors cursor-pointer ${
+          locale === "en" ? "text-text-muted font-semibold" : "text-text-light hover:text-text-muted"
         }`}
       >
         {t("en")}

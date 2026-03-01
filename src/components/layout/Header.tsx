@@ -20,30 +20,30 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-bg/60 backdrop-blur-sm">
-      <div className="max-w-[1920px] mx-auto px-6 md:px-10 lg:px-[3.33%] h-20 lg:h-[148px] flex items-center">
+    <header className="fixed top-0 left-0 right-0 z-50 pointer-events-none">
+      <div className="px-6 md:px-10 lg:pl-[3.33vw] lg:pr-0 h-20 lg:h-[148px] flex items-center pointer-events-auto">
         {/* Logo */}
-        <Link href="/" className="text-text-muted shrink-0 mr-6 lg:mr-[43px]">
+        <Link href="/" className="shrink-0 mr-6 lg:mr-[calc(4.38vw_-_17px)]">
           <Image
             src="/images/logo.svg"
             alt="VR"
             width={17}
             height={56}
-            className="h-[40px] lg:h-[56px] w-auto"
+            className="h-[40px] lg:h-[56px] w-auto opacity-50 hover:opacity-100 transition-opacity"
           />
         </Link>
 
         {/* Desktop nav — next to logo */}
-        <nav className="hidden md:flex items-center">
+        <nav className="hidden md:flex items-center gap-[30px]">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             return (
               <Link
                 key={item.key}
                 href={item.href}
-                className={`w-[90px] text-center text-[14px] tracking-wide transition-colors ${
+                className={`text-[14px] tracking-wide transition-colors ${
                   isActive
-                    ? "text-text-muted font-semibold"
+                    ? "text-text-muted"
                     : "text-text-light hover:text-text-muted"
                 }`}
               >
@@ -52,11 +52,6 @@ export default function Header() {
             );
           })}
         </nav>
-
-        {/* Language switcher — pushed to right on desktop */}
-        <div className="hidden md:block ml-auto">
-          <LanguageSwitcher />
-        </div>
 
         {/* Mobile hamburger */}
         <button
