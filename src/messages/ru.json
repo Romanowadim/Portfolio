@@ -34,13 +34,16 @@
   },
   "equipment": {
     "heading": "ОБОРУДОВАНИЕ",
-    "processor": "Процессор",
-    "memory": "Память",
-    "storage": "Хранилище",
-    "display": "Дисплей",
-    "graphics": "Графика",
-    "size": "Размер",
-    "resolution": "Разрешение"
+    "os": "OS:",
+    "cpu": "CPU:",
+    "gpu": "GPU:",
+    "ram": "RAM:",
+    "mem": "MEM:",
+    "ios": "IOS:",
+    "diagonal": "Diagonal:",
+    "technology": "Technology:",
+    "aspectRatio": "Aspect ratio:",
+    "resolution": "Resolution:"
   },
   "order": {
     "heading": "ЗАКАЗАТЬ",

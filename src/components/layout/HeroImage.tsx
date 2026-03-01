@@ -12,10 +12,12 @@ const variants = {
   home: {
     top: "-8vh",
     width: "52vw",
+    right: "0vw",
   },
   about: {
     top: "-40vh",
     width: "76vw",
+    right: "-12vw",
   },
 };
 
@@ -24,7 +26,7 @@ const imgVariants = {
     filter: "brightness(1.13) saturate(0.85)",
   },
   about: {
-    filter: "brightness(1.2) saturate(1.15)",
+    filter: "brightness(1) saturate(1) contrast(1)",
   },
 };
 
@@ -38,7 +40,7 @@ export default function HeroImage() {
       initial={{ opacity: 0, x: 40, ...variants[variant] }}
       animate={{ opacity: 1, x: 0, ...variants[variant] }}
       transition={transition}
-      className="hidden lg:block absolute bottom-0 right-0 z-0 pointer-events-none"
+      className="hidden lg:block absolute bottom-0 z-0 pointer-events-none"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <motion.img

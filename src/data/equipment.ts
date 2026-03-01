@@ -1,8 +1,9 @@
 export type Equipment = {
   id: string;
   name: string;
-  brand: string;
+  brandIcon: string;
   image: string;
+  specKeyWidth: number;
   specs: {
     key: string;
     value: string;
@@ -12,49 +13,54 @@ export type Equipment = {
 export const equipment: Equipment[] = [
   {
     id: "imac",
-    name: 'iMac 27"',
-    brand: "Apple",
-    image: "/images/equipment/imac.jpg",
+    name: "IMAC 27-INCH",
+    brandIcon: "/images/equipment/apple-logo.svg",
+    image: "/images/equipment/imac.png",
+    specKeyWidth: 60,
     specs: [
-      { key: "processor", value: "Intel Core i5" },
-      { key: "memory", value: "16 GB" },
-      { key: "storage", value: "512 GB SSD" },
-      { key: "display", value: '27" Retina 5K' },
-      { key: "graphics", value: "Radeon Pro 570X" },
+      { key: "os", value: "macOS High Sierra" },
+      { key: "cpu", value: "Intel Core i5 3,4 GHz" },
+      { key: "gpu", value: "Nvidia GeForce GTX 780M 4 Gb" },
+      { key: "ram", value: "16 Gb 1600 MHz DDR3" },
     ],
   },
   {
     id: "pc",
-    name: "Custom PC",
-    brand: "Custom",
-    image: "/images/equipment/pc.jpg",
+    name: "PC",
+    brandIcon: "/images/equipment/windows-logo.svg",
+    image: "/images/equipment/pc.png",
+    specKeyWidth: 60,
     specs: [
-      { key: "processor", value: "AMD Ryzen 7 5800X" },
-      { key: "memory", value: "32 GB DDR4" },
-      { key: "storage", value: "1 TB NVMe SSD" },
-      { key: "graphics", value: "NVIDIA RTX 3070" },
+      { key: "os", value: "Windows 10" },
+      { key: "cpu", value: "AMD Ryzen 7 2700X 3,7 GHz" },
+      { key: "gpu", value: "Gigabyte RTX 3070 8 Gb" },
+      { key: "ram", value: "16 Gb 3200 MHz DDR4" },
     ],
   },
   {
     id: "wacom",
-    name: "Wacom Cintiq 22",
-    brand: "Wacom",
-    image: "/images/equipment/wacom.jpg",
+    name: "WACOM CINTIQ 22HD",
+    brandIcon: "/images/equipment/wacom-logo.svg",
+    image: "/images/equipment/wacom.png",
+    specKeyWidth: 105,
     specs: [
-      { key: "size", value: '21.5"' },
-      { key: "resolution", value: "1920 x 1080" },
+      { key: "diagonal", value: "22-inch" },
+      { key: "technology", value: "H-IPS LCD" },
+      { key: "aspectRatio", value: "16:9" },
+      { key: "resolution", value: "5080 lpi" },
     ],
   },
   {
     id: "ipad",
-    name: 'iPad Pro 12.9"',
-    brand: "Apple",
-    image: "/images/equipment/ipad.jpg",
+    name: "IPAD PRO 12,9-INCH",
+    brandIcon: "/images/equipment/apple-logo.svg",
+    image: "/images/equipment/ipad.png",
+    specKeyWidth: 60,
     specs: [
-      { key: "processor", value: "Apple M1" },
-      { key: "memory", value: "8 GB" },
-      { key: "storage", value: "256 GB" },
-      { key: "display", value: '12.9" Liquid Retina XDR' },
+      { key: "ios", value: "15.0" },
+      { key: "cpu", value: "Apple M1" },
+      { key: "ram", value: "8 Gb" },
+      { key: "mem", value: "64 Gb" },
     ],
   },
 ];

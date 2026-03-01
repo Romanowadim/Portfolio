@@ -34,13 +34,16 @@
   },
   "equipment": {
     "heading": "EQUIPMENT",
-    "processor": "Processor",
-    "memory": "Memory",
-    "storage": "Storage",
-    "display": "Display",
-    "graphics": "Graphics",
-    "size": "Size",
-    "resolution": "Resolution"
+    "os": "OS:",
+    "cpu": "CPU:",
+    "gpu": "GPU:",
+    "ram": "RAM:",
+    "mem": "MEM:",
+    "ios": "IOS:",
+    "diagonal": "Diagonal:",
+    "technology": "Technology:",
+    "aspectRatio": "Aspect ratio:",
+    "resolution": "Resolution:"
   },
   "order": {
     "heading": "ORDER",
