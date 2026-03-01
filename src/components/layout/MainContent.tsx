@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePathname } from "@/i18n/navigation";
 import WhitePanel from "@/components/layout/WhitePanel";
@@ -15,11 +16,32 @@ export default function MainContent({
 }) {
   const pathname = usePathname();
   const isFullWidth = pathname === "/equipment";
-  const showSocial = pathname === "/about" || pathname === "/equipment";
+  const showSocial = pathname === "/" || pathname === "/about" || pathname === "/equipment";
+
+  const [showFullWidth, setShowFullWidth] = useState(isFullWidth);
+  const prevPathnameRef = useRef(pathname);
+
+  useEffect(() => {
+    const prevPathname = prevPathnameRef.current;
+    prevPathnameRef.current = pathname;
+
+    if (isFullWidth) {
+      if (prevPathname === "/about") {
+        // From About: delay so staggered section exits play before branch swap
+        const timer = setTimeout(() => setShowFullWidth(true), 550);
+        return () => clearTimeout(timer);
+      }
+      setShowFullWidth(true);
+    } else {
+      // Leaving Equipment: delay so exit animations play in full-width branch
+      const timer = setTimeout(() => setShowFullWidth(false), 550);
+      return () => clearTimeout(timer);
+    }
+  }, [isFullWidth, pathname]);
 
   return (
     <>
-      {isFullWidth ? (
+      {showFullWidth ? (
         <div className="min-h-screen relative">
           <main className="relative w-full min-h-screen pt-[148px]">
             <PageTransition>{children}</PageTransition>
@@ -38,15 +60,20 @@ export default function MainContent({
         </div>
       )}
 
-      {/* Shared SocialLinks — persists across About/Equipment transitions */}
+      {/* Shared SocialLinks — persists across Home/About/Equipment, animates position per page */}
       <AnimatePresence>
         {showSocial && (
           <motion.div
             key="social-links"
-            initial={{ y: -240 }}
-            animate={{ y: 0, transition: { duration: 0.8, ease: "easeOut" } }}
-            exit={{ y: -240, transition: { duration: 0.5, ease: "easeIn" } }}
-            className="fixed left-6 md:left-10 lg:left-[7.71vw] bottom-[calc((100vh-778px)/2)] z-30"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className={`fixed left-6 md:left-10 lg:left-[7.71vw] z-30 transition-[bottom] duration-1000 ease-in-out ${
+              pathname === "/"
+                ? "bottom-[calc((100vh-311px)/2)]"
+                : "bottom-[calc((100vh-778px)/4)]"
+            }`}
           >
             <SocialLinks />
           </motion.div>

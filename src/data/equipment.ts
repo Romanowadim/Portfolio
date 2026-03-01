@@ -1,8 +1,16 @@
+export type ImagePosition = {
+  width: string;
+  height: string;
+  left: string;
+  top: string;
+};
+
 export type Equipment = {
   id: string;
   name: string;
   brandIcon: string;
   image: string;
+  imagePos: ImagePosition;
   specKeyWidth: number;
   specs: {
     key: string;
@@ -16,6 +24,7 @@ export const equipment: Equipment[] = [
     name: "IMAC 27-INCH",
     brandIcon: "/images/equipment/apple-logo.svg",
     image: "/images/equipment/imac.png",
+    imagePos: { width: "129.02%", height: "129.02%", left: "-14.12%", top: "-20.39%" },
     specKeyWidth: 60,
     specs: [
       { key: "os", value: "macOS High Sierra" },
@@ -29,6 +38,7 @@ export const equipment: Equipment[] = [
     name: "PC",
     brandIcon: "/images/equipment/windows-logo.svg",
     image: "/images/equipment/pc.png",
+    imagePos: { width: "87.84%", height: "87.84%", left: "6.08%", top: "0%" },
     specKeyWidth: 60,
     specs: [
       { key: "os", value: "Windows 10" },
@@ -42,6 +52,7 @@ export const equipment: Equipment[] = [
     name: "WACOM CINTIQ 22HD",
     brandIcon: "/images/equipment/wacom-logo.svg",
     image: "/images/equipment/wacom.png",
+    imagePos: { width: "113.81%", height: "63.92%", left: "-6.71%", top: "12.55%" },
     specKeyWidth: 105,
     specs: [
       { key: "diagonal", value: "22-inch" },
@@ -55,6 +66,7 @@ export const equipment: Equipment[] = [
     name: "IPAD PRO 12,9-INCH",
     brandIcon: "/images/equipment/apple-logo.svg",
     image: "/images/equipment/ipad.png",
+    imagePos: { width: "82.87%", height: "98.04%", left: "8.56%", top: "-5.1%" },
     specKeyWidth: 60,
     specs: [
       { key: "ios", value: "15.0" },

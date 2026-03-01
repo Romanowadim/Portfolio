@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
-import SocialLinks from "@/components/layout/SocialLinks";
 
 export default function HomePage() {
   const t = useTranslations("hero");
@@ -22,7 +21,6 @@ export default function HomePage() {
             {t("title")}
           </p>
         </motion.div>
-        <SocialLinks />
       </div>
 
     </div>

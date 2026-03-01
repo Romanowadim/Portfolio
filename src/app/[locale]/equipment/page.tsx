@@ -13,25 +13,31 @@ export default function EquipmentPage() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.5 }}
-      className="flex flex-col h-[calc(100vh-148px)] px-6 md:px-10 lg:px-[5.7vw]"
+      className="flex flex-col h-[calc(100vh-148px)] px-6 md:px-10 lg:px-[7.71vw] lg:pb-[calc((100vh-778px)/4+20px)]"
     >
       {/* Equipment grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6 flex-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-[10.5vw] flex-1 content-center">
         {equipment.map((item, i) => (
           <motion.div
             key={item.id}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.12, duration: 0.5, ease: "easeOut" }}
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 + i * 0.12, duration: 0.5, ease: "easeOut" }}
             className="flex flex-col"
           >
             {/* Device image */}
-            <div className="flex items-end justify-center h-[220px] lg:h-[calc(50vh-90px)]">
+            <div className="relative w-full aspect-square overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={item.image}
                 alt={item.name}
-                className="max-h-full max-w-full object-contain"
+                className="absolute max-w-none"
+                style={{
+                  width: item.imagePos.width,
+                  height: item.imagePos.height,
+                  left: item.imagePos.left,
+                  top: item.imagePos.top,
+                }}
               />
             </div>
 
