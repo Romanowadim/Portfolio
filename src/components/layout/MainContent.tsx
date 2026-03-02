@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/navigation";
 import WhitePanel from "@/components/layout/WhitePanel";
 import HeroImage from "@/components/layout/HeroImage";
@@ -15,29 +16,52 @@ export default function MainContent({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const t = useTranslations("hero");
   const isFullWidth = pathname === "/equipment";
-  const showSocial = pathname === "/" || pathname === "/about" || pathname === "/equipment";
+  const showSocial = pathname === "/" || pathname === "/about" || pathname === "/equipment" || pathname === "/order" || pathname.startsWith("/portfolio");
+  const showHeroName = pathname === "/" || pathname === "/order";
 
+  const isOrder = pathname === "/order";
   const [showFullWidth, setShowFullWidth] = useState(isFullWidth);
+  const [isOrderLayout, setIsOrderLayout] = useState(isOrder);
   const prevPathnameRef = useRef(pathname);
 
   useEffect(() => {
     const prevPathname = prevPathnameRef.current;
-    prevPathnameRef.current = pathname;
 
     if (isFullWidth) {
       if (prevPathname === "/about") {
-        // From About: delay so staggered section exits play before branch swap
         const timer = setTimeout(() => setShowFullWidth(true), 550);
         return () => clearTimeout(timer);
       }
       setShowFullWidth(true);
     } else {
-      // Leaving Equipment: delay so exit animations play in full-width branch
       const timer = setTimeout(() => setShowFullWidth(false), 550);
       return () => clearTimeout(timer);
     }
   }, [isFullWidth, pathname]);
+
+  useEffect(() => {
+    const prevPathname = prevPathnameRef.current;
+
+    if (isOrder) {
+      if (prevPathname === "/about") {
+        // From About: delay so staggered section exits play before layout shifts
+        const timer = setTimeout(() => setIsOrderLayout(true), 550);
+        return () => clearTimeout(timer);
+      }
+      setIsOrderLayout(true);
+    } else {
+      // Delay layout reset so Order exit animation plays in place
+      const timer = setTimeout(() => setIsOrderLayout(false), 550);
+      return () => clearTimeout(timer);
+    }
+  }, [isOrder, pathname]);
+
+  // Update prev pathname ref LAST so both effects above can read the previous value
+  useEffect(() => {
+    prevPathnameRef.current = pathname;
+  }, [pathname]);
 
   return (
     <>
@@ -50,7 +74,13 @@ export default function MainContent({
       ) : (
         <div className="h-screen relative overflow-hidden">
           <WhitePanel />
-          <main className="relative w-full lg:w-[45%] px-6 md:px-10 lg:pl-[7.71vw] pt-32 lg:pt-[148px] pb-10 lg:pb-0 h-screen flex flex-col">
+          <main
+            className={`relative w-full px-6 md:px-10 pt-32 lg:pt-[148px] h-screen flex flex-col ${
+              isOrderLayout
+                ? "lg:pl-[38vw] pb-10 lg:pb-6 overflow-y-auto"
+                : "lg:w-[45%] lg:pl-[7.71vw] pb-10 lg:pb-0"
+            }`}
+          >
             <div className="flex-1 flex flex-col">
               <PageTransition>{children}</PageTransition>
             </div>
@@ -59,6 +89,28 @@ export default function MainContent({
           <HeroImage />
         </div>
       )}
+
+      {/* Shared hero name — persists across Home/Order without re-animating */}
+      <AnimatePresence>
+        {showHeroName && (
+          <motion.div
+            key="hero-name"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.5, delay: 0.5, ease: "easeOut" } }}
+            exit={{ opacity: 0, transition: { duration: 0.3, ease: "easeOut" } }}
+            className="hidden lg:flex fixed left-[7.71vw] top-[148px] h-[calc(100vh-148px)] flex-col justify-center z-10 pointer-events-none"
+          >
+            <div className="mb-[83px]">
+              <h2 className="text-[14px] font-bold tracking-[4.5px] text-text-muted uppercase mb-0">
+                {t("name")}
+              </h2>
+              <p className="text-[14px] font-medium tracking-[4.5px] text-text-light">
+                {t("title")}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Shared SocialLinks — persists across Home/About/Equipment, animates position per page */}
       <AnimatePresence>
@@ -70,9 +122,9 @@ export default function MainContent({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
             className={`fixed left-6 md:left-10 lg:left-[7.71vw] z-30 transition-[bottom] duration-1000 ease-in-out ${
-              pathname === "/"
+              pathname === "/" || pathname === "/order"
                 ? "bottom-[calc((100vh-311px)/2)]"
-                : "bottom-[calc((100vh-778px)/4)]"
+                : "bottom-[calc((100vh-778px)/4)]" /* About, Portfolio, Equipment */
             }`}
           >
             <SocialLinks />
