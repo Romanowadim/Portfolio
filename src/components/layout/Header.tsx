@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
+import { useAdmin } from "@/components/admin/AdminProvider";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -16,7 +17,9 @@ const navItems = [
 
 export default function Header() {
   const t = useTranslations("nav");
+  const tAdmin = useTranslations("admin");
   const pathname = usePathname();
+  const { isAdmin, logout } = useAdmin();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -51,6 +54,14 @@ export default function Header() {
               </Link>
             );
           })}
+          {isAdmin && (
+            <button
+              onClick={logout}
+              className="text-[12px] tracking-wide text-[#c0c0c0] hover:text-text-muted transition-colors opacity-60 hover:opacity-100"
+            >
+              {tAdmin("logout")}
+            </button>
+          )}
         </nav>
 
         {/* Mobile hamburger */}

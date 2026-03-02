@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/Romanowadim/Portfolio#readme",
   "dependencies": {
+    "@vercel/blob": "^2.3.0",
     "framer-motion": "^12.34.3",
     "next": "^16.1.6",
     "next-intl": "^4.8.3",

@@ -1,8 +1,10 @@
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { routing } from "@/i18n/routing";
 import Header from "@/components/layout/Header";
 import MainContent from "@/components/layout/MainContent";
+import AdminProvider from "@/components/admin/AdminProvider";
 import "@/app/globals.css";
 
 type Props = {
@@ -17,12 +19,17 @@ export default async function LocaleLayout({ children, params }: Props) {
     notFound();
   }
 
+  const h = await headers();
+  const isAdmin = h.get("x-is-admin") === "true";
+
   return (
     <html lang={locale}>
       <body>
         <NextIntlClientProvider>
-          <Header />
-          <MainContent>{children}</MainContent>
+          <AdminProvider initialIsAdmin={isAdmin}>
+            <Header />
+            <MainContent>{children}</MainContent>
+          </AdminProvider>
         </NextIntlClientProvider>
       </body>
     </html>

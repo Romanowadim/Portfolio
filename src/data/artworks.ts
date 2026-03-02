@@ -2,6 +2,7 @@ export type Artwork = {
   id: string;
   title: { ru: string; en: string };
   image: string;
+  thumbnail?: string;
   sketch?: string;
   year?: string;
   tools?: string;

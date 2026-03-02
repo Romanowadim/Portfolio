@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { getArtworksByCategory, Artwork } from "@/data/artworks";
 import ArtworkModal from "@/components/portfolio/ArtworkModal";
+import { useAdmin } from "@/components/admin/AdminProvider";
+import AddArtworkTile from "@/components/admin/AddArtworkTile";
+import AddArtworkModal from "@/components/admin/AddArtworkModal";
 
 const categoryPreviews: Record<string, string> = {
   personal: "/images/portfolio-previews/personal.png",
@@ -33,16 +36,39 @@ const categories = [
 export default function CategoryMenu() {
   const t = useTranslations("portfolio");
   const locale = useLocale() as "ru" | "en";
+  const { isAdmin } = useAdmin();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [activeGrid, setActiveGrid] = useState<{ category: string; subcategory?: string } | null>(null);
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [dynamicArtworks, setDynamicArtworks] = useState<Artwork[]>([]);
+
+  // Fetch dynamic artworks
+  useEffect(() => {
+    fetch("/api/artworks")
+      .then((r) => r.json())
+      .then((data: Artwork[]) => setDynamicArtworks(data))
+      .catch(() => {});
+  }, []);
 
   const showPreview = hoveredCategory && !activeGrid && !expanded;
 
-  const artworks = activeGrid
-    ? getArtworksByCategory(activeGrid.category, activeGrid.subcategory)
-    : [];
+  // Merge static + dynamic artworks
+  const mergedArtworks = (() => {
+    if (!activeGrid) return [];
+    const staticOnes = getArtworksByCategory(activeGrid.category, activeGrid.subcategory);
+    const dynamicOnes = dynamicArtworks.filter((a) => {
+      if (a.category !== activeGrid.category) return false;
+      if (activeGrid.subcategory && a.subcategory !== activeGrid.subcategory) return false;
+      return true;
+    });
+    // Dynamic artworks with same id override static
+    const idMap = new Map<string, Artwork>();
+    for (const a of staticOnes) idMap.set(a.id, a);
+    for (const a of dynamicOnes) idMap.set(a.id, a);
+    return Array.from(idMap.values());
+  })();
 
   const handleCategoryClick = (category: string) => {
     if (activeGrid?.category === category && !activeGrid?.subcategory) {
@@ -62,6 +88,10 @@ export default function CategoryMenu() {
 
   const isCategoryActive = (key: string) => {
     return activeGrid?.category === key && !activeGrid?.subcategory;
+  };
+
+  const handleArtworkAdded = (artwork: Artwork) => {
+    setDynamicArtworks((prev) => [...prev, artwork]);
   };
 
   return (
@@ -162,7 +192,7 @@ export default function CategoryMenu() {
 
       {/* Artwork grid overlay — covers hero image area */}
       <AnimatePresence>
-        {activeGrid && artworks.length > 0 && (
+        {activeGrid && mergedArtworks.length > 0 && (
           <motion.div
             key={`${activeGrid.category}-${activeGrid.subcategory ?? "all"}`}
             initial={{ opacity: 0 }}
@@ -173,7 +203,7 @@ export default function CategoryMenu() {
             style={{ paddingTop: 24, paddingBottom: 24, paddingRight: 24 }}
           >
             <div className="grid grid-cols-4 gap-[24px]">
-              {artworks.map((artwork, i) => (
+              {mergedArtworks.map((artwork, i) => (
                 <motion.button
                   key={artwork.id}
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -183,7 +213,7 @@ export default function CategoryMenu() {
                   className="group relative aspect-square overflow-hidden bg-[#e0e0e0]"
                 >
                   <Image
-                    src={artwork.image}
+                    src={artwork.thumbnail || artwork.image}
                     alt={artwork.title[locale]}
                     fill
                     className="object-cover"
@@ -218,6 +248,12 @@ export default function CategoryMenu() {
                   )}
                 </motion.button>
               ))}
+              {isAdmin && (
+                <AddArtworkTile
+                  index={mergedArtworks.length}
+                  onClick={() => setShowAddModal(true)}
+                />
+              )}
             </div>
           </motion.div>
         )}
@@ -229,6 +265,17 @@ export default function CategoryMenu() {
           onClose={() => setSelectedArtwork(null)}
         />
       )}
+
+      <AnimatePresence>
+        {showAddModal && activeGrid && (
+          <AddArtworkModal
+            category={activeGrid.category}
+            subcategory={activeGrid.subcategory}
+            onClose={() => setShowAddModal(false)}
+            onSaved={handleArtworkAdded}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

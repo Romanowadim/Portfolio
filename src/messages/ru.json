@@ -46,26 +46,57 @@
     "resolution": "Resolution:"
   },
   "order": {
-    "heading": "ЗАКАЗАТЬ",
-    "name": "Ваше имя",
-    "email": "Email",
-    "service": "Тип услуги",
-    "description": "Описание проекта",
-    "budget": "Бюджет",
-    "submit": "Отправить заявку",
-    "services": {
-      "illustration": "Иллюстрация",
-      "logo": "Логотип",
-      "concept": "Концепт-арт",
-      "banner": "Баннер",
-      "other": "Другое"
-    },
-    "success": "Заявка отправлена!",
-    "successMessage": "Я свяжусь с вами в ближайшее время."
+    "theme": "ТЕМА",
+    "themeHint": "Выберите, что вы хотите, или напишите тему самостоятельно.",
+    "description": "ОПИСАНИЕ",
+    "descriptionHint": "Опишите изображение.",
+    "references": "РЕФЕРЕНСЫ",
+    "referencesHint": "Добавьте и опишите референсы, если они у вас есть.",
+    "referencesFormat": "(Вы можете прикрепить изображения в формате PNG, JPEG и PDF)",
+    "email": "EMAIL",
+    "emailHint": "Добавьте ваш email для обратной связи.",
+    "termsPrefix": "Я согласен с ",
+    "termsConditions": "Условиями использования",
+    "termsAnd": " и ",
+    "privacyPolicy": "Политикой конфиденциальности",
+    "price": "ЦЕНА",
+    "priceHint": "Минимальная цена за этот заказ",
+    "priceValue": "~ 300$",
+    "goToConditions": "ПЕРЕЙТИ К УСЛОВИЯМ"
   },
   "comingSoon": {
     "title": "СКОРО",
     "subtitle": "Этот раздел находится в разработке"
+  },
+  "admin": {
+    "login": "ВХОД АДМИНИСТРАТОРА",
+    "password": "Пароль",
+    "wrongPassword": "Неверный пароль",
+    "submit": "ВОЙТИ",
+    "logout": "ВЫХОД",
+    "addArtwork": "ДОБАВИТЬ РАБОТУ",
+    "form": {
+      "image": "ИЗОБРАЖЕНИЕ",
+      "changeImage": "Сменить изображение",
+      "sketch": "ЧЕРНОВИК",
+      "titleRu": "НАЗВАНИЕ (RU)",
+      "titleEn": "НАЗВАНИЕ (EN)",
+      "category": "КАТЕГОРИЯ",
+      "subcategory": "ПОДКАТЕГОРИЯ",
+      "year": "ГОД",
+      "hours": "ВРЕМЯ РАБОТЫ",
+      "resolution": "РАЗМЕР ХОЛСТА",
+      "tools": "ПРОГРАММЫ",
+      "clientInfo": "ИНФОРМАЦИЯ О ЗАКАЗЧИКЕ",
+      "clientName": "ИМЯ КЛИЕНТА",
+      "client": "ПРОЕКТ",
+      "clientRole": "ДОЛЖНОСТЬ",
+      "clientAvatar": "АВАТАР",
+      "socials": "СОЦСЕТИ",
+      "addSocial": "Добавить ссылку",
+      "review": "ОТЗЫВ",
+      "save": "СОХРАНИТЬ"
+    }
   },
   "language": {
     "ru": "RU",

@@ -10,11 +10,13 @@ const transition = { duration: 0.7, ease };
 const variants = {
   home: { top: "-8vh", width: "52vw", right: "0vw" },
   about: { top: "-40vh", width: "76vw", right: "-12vw" },
+  order: { top: "-8vh", width: "52vw", right: "-8.3vw" },
 };
 
 const imgVariants = {
   home: { filter: "brightness(1.13) saturate(0.85)" },
   about: { filter: "brightness(1) saturate(1) contrast(1)" },
+  order: { filter: "brightness(1.13) saturate(0.85)" },
 };
 
 export default function HeroImage() {
@@ -23,15 +25,16 @@ export default function HeroImage() {
 
   const isAbout = pathname === "/about";
   const isHome = pathname === "/";
+  const isOrder = pathname === "/order";
   const wasAbout = prevPathnameRef.current === "/about";
 
-  // About → non-Home: fade out in place instead of animating position
-  const isFadingOut = wasAbout && !isAbout && !isHome;
+  // About → non-Home/Order: fade out in place instead of animating position
+  const isFadingOut = wasAbout && !isAbout && !isHome && !isOrder;
 
   // Update ref in effect so strict mode double-render doesn't break detection
   useEffect(() => { prevPathnameRef.current = pathname; }, [pathname]);
 
-  const variant = isAbout ? "about" : "home";
+  const variant = isAbout ? "about" : isOrder ? "order" : "home";
   // Keep "about" position during fade-out so it doesn't slide to "home"
   const positionVariant = isFadingOut ? "about" : variant;
 

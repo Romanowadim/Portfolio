@@ -46,26 +46,57 @@
     "resolution": "Resolution:"
   },
   "order": {
-    "heading": "ORDER",
-    "name": "Your name",
-    "email": "Email",
-    "service": "Service type",
-    "description": "Project description",
-    "budget": "Budget",
-    "submit": "Send request",
-    "services": {
-      "illustration": "Illustration",
-      "logo": "Logo",
-      "concept": "Concept Art",
-      "banner": "Banner",
-      "other": "Other"
-    },
-    "success": "Request sent!",
-    "successMessage": "I will contact you shortly."
+    "theme": "THEME",
+    "themeHint": "Choose what you want or write theme yourself.",
+    "description": "DESCRIPTION",
+    "descriptionHint": "Describe the image.",
+    "references": "REFERENCES",
+    "referencesHint": "Add and describe the references if you have them.",
+    "referencesFormat": "(You can attach images in PNG, JPEG and PDF format)",
+    "email": "EMAIL",
+    "emailHint": "Add your email address for feedback.",
+    "termsPrefix": "I agree to the ",
+    "termsConditions": "Terms & Conditions",
+    "termsAnd": " and ",
+    "privacyPolicy": "Privacy Policy",
+    "price": "PRICE",
+    "priceHint": "Minimal price for this order",
+    "priceValue": "~ 300$",
+    "goToConditions": "GO TO THE CONDITIONS"
   },
   "comingSoon": {
     "title": "COMING SOON",
     "subtitle": "This section is under development"
+  },
+  "admin": {
+    "login": "ADMIN LOGIN",
+    "password": "Password",
+    "wrongPassword": "Wrong password",
+    "submit": "SIGN IN",
+    "logout": "LOGOUT",
+    "addArtwork": "ADD ARTWORK",
+    "form": {
+      "image": "IMAGE",
+      "changeImage": "Change image",
+      "sketch": "SKETCH",
+      "titleRu": "TITLE (RU)",
+      "titleEn": "TITLE (EN)",
+      "category": "CATEGORY",
+      "subcategory": "SUBCATEGORY",
+      "year": "YEAR",
+      "hours": "WORK TIME",
+      "resolution": "CANVAS SIZE",
+      "tools": "PROGRAMS",
+      "clientInfo": "CLIENT INFO",
+      "clientName": "CLIENT NAME",
+      "client": "PROJECT",
+      "clientRole": "ROLE",
+      "clientAvatar": "AVATAR",
+      "socials": "SOCIAL LINKS",
+      "addSocial": "Add link",
+      "review": "REVIEW",
+      "save": "SAVE"
+    }
   },
   "language": {
     "ru": "RU",
