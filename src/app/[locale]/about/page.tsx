@@ -4,12 +4,17 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 
+function getExperience(since: number): string {
+  const years = new Date().getFullYear() - since;
+  return `${years} years of experience`;
+}
+
 const programs = [
-  { name: "Photoshop", fullName: "Adobe Photoshop", experience: "11 years of experience", icon: "/images/programs/photoshop.svg", className: "w-[35px] h-[35px]", gap: "" },
-  { name: "Illustrator", fullName: "Adobe Illustrator", experience: "3 years of experience", icon: "/images/programs/illustrator.svg", className: "w-[35px] h-[35px]", gap: "" },
-  { name: "Animate", fullName: "Adobe Animate", experience: "7 years of experience", icon: "/images/programs/animate.svg", className: "w-[35px] h-[35px]", gap: "" },
-  { name: "Figma", fullName: "Figma", experience: "3 years of experience", icon: "/images/programs/figma.png", className: "w-[43px] h-[43px]", gap: "-m-1" },
-  { name: "Procreate", fullName: "Procreate", experience: "5 years of experience", icon: "/images/programs/procreate.png", className: "w-[35px] h-[35px]", gap: "" },
+  { name: "Photoshop", fullName: "Adobe Photoshop", since: 2009, icon: "/images/programs/photoshop.svg", className: "w-[35px] h-[35px]", gap: "" },
+  { name: "Illustrator", fullName: "Adobe Illustrator", since: 2017, icon: "/images/programs/illustrator.svg", className: "w-[35px] h-[35px]", gap: "" },
+  { name: "Animate", fullName: "Adobe Animate", since: 2013, icon: "/images/programs/animate.svg", className: "w-[35px] h-[35px]", gap: "" },
+  { name: "Figma", fullName: "Figma", since: 2017, icon: "/images/programs/figma.svg", className: "w-[35px] h-[35px]", gap: "" },
+  { name: "Procreate", fullName: "Procreate", since: 2015, icon: "/images/programs/procreate.png", className: "w-[35px] h-[35px]", gap: "" },
 ];
 
 export default function AboutPage() {
@@ -100,7 +105,7 @@ export default function AboutPage() {
                         </div>
                         <div className="h-px bg-[#e8e8e8] mx-[11px]" />
                         <p className="text-[12px] text-[#7f7f7f] leading-[15.5px] text-center py-[10px]">
-                          {p.experience}
+                          {getExperience(p.since)}
                         </p>
                       </motion.div>
                     )}

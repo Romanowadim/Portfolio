@@ -5,25 +5,43 @@ import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { Artwork } from "@/data/artworks";
+import { useAdmin } from "@/components/admin/AdminProvider";
 
-const toolInfo: Record<string, { fullName: string; experience: string }> = {
-  photoshop: { fullName: "Adobe Photoshop", experience: "11 years of experience" },
-  illustrator: { fullName: "Adobe Illustrator", experience: "3 years of experience" },
-  animate: { fullName: "Adobe Animate", experience: "7 years of experience" },
-  figma: { fullName: "Figma", experience: "3 years of experience" },
-  procreate: { fullName: "Procreate", experience: "5 years of experience" },
+const toolInfo: Record<string, { fullName: string; since: number }> = {
+  photoshop: { fullName: "Adobe Photoshop", since: 2009 },
+  illustrator: { fullName: "Adobe Illustrator", since: 2017 },
+  animate: { fullName: "Adobe Animate", since: 2013 },
+  figma: { fullName: "Figma", since: 2017 },
+  procreate: { fullName: "Procreate", since: 2015 },
 };
+
+function getExperience(since: number): string {
+  const years = new Date().getFullYear() - since;
+  return `${years} years of experience`;
+}
 
 type Props = {
   artwork: Artwork;
   onClose: () => void;
+  onEdit?: () => void;
 };
 
-export default function ArtworkModal({ artwork, onClose }: Props) {
+export default function ArtworkModal({ artwork, onClose, onEdit }: Props) {
   const locale = useLocale() as "ru" | "en";
+  const { isAdmin } = useAdmin();
   const isOrder = artwork.category === "orders" && artwork.clientName;
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
+  const [imgRatio, setImgRatio] = useState<number | null>(null);
+
+  // Load image to get natural aspect ratio
+  useEffect(() => {
+    const img = new window.Image();
+    img.onload = () => {
+      setImgRatio(img.naturalWidth / img.naturalHeight);
+    };
+    img.src = artwork.image;
+  }, [artwork.image]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -64,23 +82,41 @@ export default function ArtworkModal({ artwork, onClose }: Props) {
         </svg>
       </button>
 
+      {/* Edit button (admin only, dynamic artworks only) */}
+      {isAdmin && artwork.id.startsWith("dyn-") && onEdit && (
+        <button
+          onClick={onEdit}
+          className="absolute top-[102px] right-[62px] z-10 w-[20px] h-[20px] flex items-center justify-center text-[#cccccc] hover:text-[#808080] transition-colors"
+        >
+          <svg width="20" height="20" viewBox="0 0 20 19.9025" fill="none">
+            <path
+              d="M12.4365 3.32148L16.5049 7.38989L6.20657 17.6883L2.14042 13.6198L12.4365 3.32148ZM19.5921 2.34027L17.7777 0.525894C17.0765 -0.175298 15.938 -0.175298 15.2344 0.525894L13.4964 2.26388L17.5648 6.33233L19.5921 4.30507C20.136 3.76118 20.136 2.88411 19.5921 2.34027ZM0.0113215 19.3383C-0.0627191 19.6716 0.238132 19.9701 0.571391 19.8891L5.105 18.7899L1.03885 14.7215L0.0113215 19.3383Z"
+              fill="currentColor"
+            />
+          </svg>
+        </button>
+      )}
+
       {/* Modal content */}
-      <div className="absolute inset-0 flex items-center justify-center p-[64px]" onClick={onClose}>
+      <div className="absolute inset-0 flex items-center justify-center p-[52px]" onClick={onClose}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="flex max-w-[1094px] w-full max-h-[798px] h-full shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]"
+          className="flex max-h-[calc(50vh+360px)] h-full shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Left — artwork image (639/1094 ≈ 58.4%) */}
-          <div className="relative h-full shrink-0 overflow-hidden" style={{ width: "58.4%" }}>
+          {/* Left — artwork image, width adapts to image aspect ratio */}
+          <div
+            className="relative h-full shrink-0 overflow-hidden bg-[#f0f0f0]"
+            style={{ width: imgRatio ? `min(calc(${imgRatio} * (50vh + 360px)), calc(100vw - 104px - 455px))` : "58.4%" }}
+          >
             <Image
               src={artwork.image}
               alt={artwork.title[locale]}
               fill
-              className="object-cover"
-              sizes="50vw"
+              className="object-contain"
+              sizes="60vw"
               priority
             />
             {/* Fullscreen button */}
@@ -105,7 +141,7 @@ export default function ArtworkModal({ artwork, onClose }: Props) {
           </div>
 
           {/* Right — info panel */}
-          <div className="bg-white flex flex-col justify-between p-[50px] min-w-[296px] flex-1 overflow-y-auto">
+          <div className="bg-white flex flex-col justify-between p-[50px] w-[455px] shrink-0 overflow-y-auto">
             {/* Top section */}
             <div>
               {/* Client info block (orders only) */}
@@ -141,9 +177,9 @@ export default function ArtworkModal({ artwork, onClose }: Props) {
                   </div>
                   {artwork.clientSocials && (
                     <div className="flex flex-col items-center gap-[10px] shrink-0">
-                      {artwork.clientSocials.map((social) => (
+                      {artwork.clientSocials.map((social, i) => (
                         <a
-                          key={social.icon}
+                          key={i}
                           href={social.url}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -213,7 +249,7 @@ export default function ArtworkModal({ artwork, onClose }: Props) {
                   {artwork.tools.split(" | ").map((tool) => {
                     const key = tool.toLowerCase();
                     const info = toolInfo[key];
-                    const iconSrc = `/images/programs/${key}.${key === "procreate" || key === "figma" ? "png" : "svg"}`;
+                    const iconSrc = `/images/programs/${key}.${key === "procreate" ? "png" : "svg"}`;
                     return (
                       <div
                         key={tool}
@@ -225,7 +261,7 @@ export default function ArtworkModal({ artwork, onClose }: Props) {
                         <img
                           src={iconSrc}
                           alt={tool}
-                          className="w-[35px] h-[35px] object-contain cursor-pointer grayscale opacity-25"
+                          className={`object-contain cursor-pointer grayscale opacity-25 ${"w-[35px] h-[35px]"}`}
                         />
                         <AnimatePresence>
                           {hoveredTool === tool && info && (
@@ -239,14 +275,14 @@ export default function ArtworkModal({ artwork, onClose }: Props) {
                             >
                               <div className="flex items-center gap-3 px-[13px] pt-[14px] pb-[13px]">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={iconSrc} alt="" className="w-[35px] h-[35px] object-contain shrink-0" />
+                                <img src={iconSrc} alt="" className={`object-contain shrink-0 ${"w-[35px] h-[35px]"}`} />
                                 <span className="text-[14px] text-[#7f7f7f] leading-[20px] font-semibold">
                                   {info.fullName}
                                 </span>
                               </div>
                               <div className="h-px bg-[#e8e8e8] mx-[11px]" />
                               <p className="text-[12px] text-[#7f7f7f] leading-[15.5px] text-center py-[10px]">
-                                {info.experience}
+                                {getExperience(info.since)}
                               </p>
                             </motion.div>
                           )}

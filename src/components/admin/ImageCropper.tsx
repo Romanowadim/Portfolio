@@ -20,22 +20,12 @@ export default function ImageCropper({ imageUrl, onCropped }: Props) {
   const [dragStart, setDragStart] = useState({ mx: 0, my: 0, cx: 0, cy: 0 });
   const [uploading, setUploading] = useState(false);
 
-  // Load image and calculate initial crop
+  // Load image
   useEffect(() => {
     const img = new window.Image();
-    img.crossOrigin = "anonymous";
     img.onload = () => {
       imgRef.current = img;
       setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
-
-      const container = containerRef.current;
-      if (!container) return;
-      const maxW = container.clientWidth;
-      const maxH = 400;
-      const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
-      const dw = img.naturalWidth * scale;
-      const dh = img.naturalHeight * scale;
-      setDisplaySize({ w: dw, h: dh });
 
       const minDim = Math.min(img.naturalWidth, img.naturalHeight);
       const s = Math.floor(minDim * 0.8);
@@ -48,6 +38,15 @@ export default function ImageCropper({ imageUrl, onCropped }: Props) {
     };
     img.src = imageUrl;
   }, [imageUrl]);
+
+  // Calculate display size once container is rendered
+  useEffect(() => {
+    if (!imgLoaded || !containerRef.current || !imgSize.w) return;
+    const maxW = containerRef.current.clientWidth;
+    const maxH = 400;
+    const scale = Math.min(maxW / imgSize.w, maxH / imgSize.h, 1);
+    setDisplaySize({ w: imgSize.w * scale, h: imgSize.h * scale });
+  }, [imgLoaded, imgSize]);
 
   // Scale factor from display to natural
   const scaleX = imgSize.w / displaySize.w || 1;

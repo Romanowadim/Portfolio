@@ -6,7 +6,7 @@ const tools = [
   { key: "photoshop", label: "Photoshop", ext: "svg" },
   { key: "illustrator", label: "Illustrator", ext: "svg" },
   { key: "procreate", label: "Procreate", ext: "png" },
-  { key: "figma", label: "Figma", ext: "png" },
+  { key: "figma", label: "Figma", ext: "svg" },
   { key: "animate", label: "Animate", ext: "svg" },
 ];
 

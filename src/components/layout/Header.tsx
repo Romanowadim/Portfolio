@@ -57,7 +57,7 @@ export default function Header() {
           {isAdmin && (
             <button
               onClick={logout}
-              className="text-[12px] tracking-wide text-[#c0c0c0] hover:text-text-muted transition-colors opacity-60 hover:opacity-100"
+              className="text-[14px] tracking-wide text-text-light hover:text-text-muted transition-colors"
             >
               {tAdmin("logout")}
             </button>

@@ -35,6 +35,7 @@ export async function signToken(payload: Record<string, unknown>): Promise<strin
 export async function verifyToken(
   token: string
 ): Promise<Record<string, unknown> | null> {
+  if (!SECRET) return null;
   const parts = token.split(".");
   if (parts.length !== 2) return null;
   const [data, sig] = parts;

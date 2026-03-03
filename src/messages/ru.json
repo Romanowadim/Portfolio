@@ -73,8 +73,9 @@
     "password": "Пароль",
     "wrongPassword": "Неверный пароль",
     "submit": "ВОЙТИ",
-    "logout": "ВЫХОД",
+    "logout": "Выход",
     "addArtwork": "ДОБАВИТЬ РАБОТУ",
+    "editArtwork": "РЕДАКТИРОВАТЬ РАБОТУ",
     "form": {
       "image": "ИЗОБРАЖЕНИЕ",
       "changeImage": "Сменить изображение",
@@ -95,7 +96,12 @@
       "socials": "СОЦСЕТИ",
       "addSocial": "Добавить ссылку",
       "review": "ОТЗЫВ",
-      "save": "СОХРАНИТЬ"
+      "thumbnail": "МИНИАТЮРА В КАТАЛОГЕ",
+      "cropThumbnail": "ОБРЕЗАТЬ МИНИАТЮРУ",
+      "recrop": "Обрезать заново",
+      "save": "СОХРАНИТЬ",
+      "update": "ОБНОВИТЬ",
+      "delete": "УДАЛИТЬ"
     }
   },
   "language": {

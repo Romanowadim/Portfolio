@@ -21,43 +21,49 @@ const socialOptions = [
 type Props = {
   category: string;
   subcategory?: string;
+  artwork?: Artwork;
   onClose: () => void;
   onSaved: (artwork: Artwork) => void;
+  onDeleted?: (id: string) => void;
 };
 
-export default function AddArtworkModal({
+export default function ArtworkFormModal({
   category,
   subcategory,
+  artwork: editArtwork,
   onClose,
   onSaved,
+  onDeleted,
 }: Props) {
+  const isEdit = !!editArtwork;
   const t = useTranslations("admin");
 
   // Image state
-  const [imageUrl, setImageUrl] = useState("");
-  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState(editArtwork?.image || "");
+  const [thumbnailUrl, setThumbnailUrl] = useState(editArtwork?.thumbnail || "");
   const [showCropper, setShowCropper] = useState(false);
-  const [sketchUrl, setSketchUrl] = useState("");
+  const [sketchUrl, setSketchUrl] = useState(editArtwork?.sketch || "");
 
   // Fields
-  const [titleRu, setTitleRu] = useState("");
-  const [titleEn, setTitleEn] = useState("");
-  const [cat, setCat] = useState(category);
-  const [subcat, setSubcat] = useState(subcategory || "");
-  const [year, setYear] = useState("");
-  const [hours, setHours] = useState("");
-  const [resolution, setResolution] = useState("");
-  const [tools, setTools] = useState("");
+  const [titleRu, setTitleRu] = useState(editArtwork?.title.ru || "");
+  const [titleEn, setTitleEn] = useState(editArtwork?.title.en || "");
+  const [cat, setCat] = useState(editArtwork?.category || category);
+  const [subcat, setSubcat] = useState(editArtwork?.subcategory || subcategory || "");
+  const [year, setYear] = useState(editArtwork?.year || "");
+  const [hours, setHours] = useState(editArtwork?.hours || "");
+  const [resolution, setResolution] = useState(editArtwork?.resolution || "");
+  const [tools, setTools] = useState(editArtwork?.tools || "");
 
   // Client section
-  const [clientExpanded, setClientExpanded] = useState(false);
-  const [clientName, setClientName] = useState("");
-  const [client, setClient] = useState("");
-  const [clientRole, setClientRole] = useState("");
-  const [clientAvatar, setClientAvatar] = useState("");
-  const [socials, setSocials] = useState<{ icon: string; url: string }[]>([]);
-  const [reviewRu, setReviewRu] = useState("");
-  const [reviewEn, setReviewEn] = useState("");
+  const hasClientData = !!(editArtwork?.clientName || editArtwork?.client || editArtwork?.clientRole || editArtwork?.clientAvatar);
+  const [clientExpanded, setClientExpanded] = useState(hasClientData);
+  const [clientName, setClientName] = useState(editArtwork?.clientName || "");
+  const [client, setClient] = useState(editArtwork?.client || "");
+  const [clientRole, setClientRole] = useState(editArtwork?.clientRole || "");
+  const [clientAvatar, setClientAvatar] = useState(editArtwork?.clientAvatar || "");
+  const [socials, setSocials] = useState<{ icon: string; url: string }[]>(editArtwork?.clientSocials || []);
+  const [reviewRu, setReviewRu] = useState(editArtwork?.review?.ru || "");
+  const [reviewEn, setReviewEn] = useState(editArtwork?.review?.en || "");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -76,7 +82,7 @@ export default function AddArtworkModal({
 
   const handleImageUploaded = (url: string) => {
     setImageUrl(url);
-    setShowCropper(true);
+    // Don't auto-open cropper — image stays as-is, cropper is separate for thumbnail
   };
 
   const handleCropped = (url: string) => {
@@ -105,7 +111,7 @@ export default function AddArtworkModal({
     setError("");
 
     const artwork: Artwork = {
-      id: `dyn-${Date.now()}`,
+      id: editArtwork?.id || `dyn-${Date.now()}`,
       title: { ru: titleRu, en: titleEn },
       image: imageUrl,
       thumbnail: thumbnailUrl || undefined,
@@ -129,22 +135,49 @@ export default function AddArtworkModal({
 
     try {
       const res = await fetch("/api/artworks", {
-        method: "POST",
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(artwork),
       });
 
-      if (res.ok) {
-        onSaved(artwork);
-        onClose();
-      } else {
+      if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         setError(data.error || `Error ${res.status}`);
+        setSaving(false);
+        return;
       }
+
+      onSaved(artwork);
+      onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Network error");
+      setSaving(false);
     }
-    setSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!editArtwork || !onDeleted) return;
+    if (!confirm("Delete this artwork?")) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/artworks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: editArtwork.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || `Error ${res.status}`);
+        setSaving(false);
+        return;
+      }
+      onDeleted(editArtwork.id);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+      setSaving(false);
+    }
   };
 
   const inputClass =
@@ -185,7 +218,7 @@ export default function AddArtworkModal({
           onClick={(e) => e.stopPropagation()}
         >
           <h2 className="text-sm font-bold tracking-[2.8px] uppercase text-text-muted mb-8">
-            {t("addArtwork")}
+            {isEdit ? t("editArtwork") : t("addArtwork")}
           </h2>
 
           <div className="flex flex-col gap-6">
@@ -194,14 +227,12 @@ export default function AddArtworkModal({
               <label className={labelClass}>{t("form.image")}</label>
               {!imageUrl ? (
                 <ImageUpload onUploaded={handleImageUploaded} />
-              ) : showCropper ? (
-                <ImageCropper imageUrl={imageUrl} onCropped={handleCropped} />
               ) : (
                 <div className="flex items-center gap-3">
                   <div className="relative w-[80px] h-[80px] overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={thumbnailUrl || imageUrl}
+                      src={imageUrl}
                       alt=""
                       className="w-full h-full object-cover"
                     />
@@ -220,13 +251,62 @@ export default function AddArtworkModal({
               )}
             </div>
 
+            {/* 1b. Thumbnail crop (for catalog card) */}
+            {imageUrl && (
+              <div>
+                <label className={labelClass}>{t("form.thumbnail")}</label>
+                {showCropper ? (
+                  <ImageCropper imageUrl={imageUrl} onCropped={handleCropped} />
+                ) : thumbnailUrl ? (
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-[80px] h-[80px] overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={thumbnailUrl}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowCropper(true)}
+                      className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                    >
+                      {t("form.recrop")}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowCropper(true)}
+                    className="text-[12px] text-[#c0c0c0] hover:text-text-muted border border-[#c0c0c0] h-[30px] px-4"
+                  >
+                    {t("form.cropThumbnail")}
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* 2. Sketch */}
             <div>
               <label className={labelClass}>{t("form.sketch")}</label>
-              <ImageUpload
-                onUploaded={setSketchUrl}
-                compact
-              />
+              {sketchUrl ? (
+                <div className="flex items-center gap-3">
+                  <div className="relative w-[80px] h-[80px] overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={sketchUrl} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSketchUrl("")}
+                    className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                  >
+                    {t("form.changeImage")}
+                  </button>
+                </div>
+              ) : (
+                <ImageUpload onUploaded={setSketchUrl} compact />
+              )}
             </div>
 
             {/* 3. Title */}
@@ -356,10 +436,23 @@ export default function AddArtworkModal({
                   </div>
                   <div>
                     <label className={labelClass}>{t("form.clientAvatar")}</label>
-                    <ImageUpload
-                      onUploaded={setClientAvatar}
-                      compact
-                    />
+                    {clientAvatar ? (
+                      <div className="flex items-center gap-3">
+                        <div className="relative w-[80px] h-[80px] rounded-full overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={clientAvatar} alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setClientAvatar("")}
+                          className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                        >
+                          {t("form.changeImage")}
+                        </button>
+                      </div>
+                    ) : (
+                      <ImageUpload onUploaded={setClientAvatar} compact />
+                    )}
                   </div>
 
                   {/* Socials */}
@@ -437,14 +530,25 @@ export default function AddArtworkModal({
               <p className="text-[12px] text-red-400 text-center">{error}</p>
             )}
 
-            {/* 11. Save */}
-            <button
-              onClick={handleSave}
-              disabled={saving || !imageUrl || !titleRu || !titleEn}
-              className="h-[40px] w-full text-sm font-bold tracking-[2.8px] uppercase bg-text-muted text-white hover:bg-text transition-colors disabled:opacity-30"
-            >
-              {saving ? "..." : t("form.save")}
-            </button>
+            {/* 11. Actions */}
+            <div className="flex gap-3">
+              {isEdit && (
+                <button
+                  onClick={handleDelete}
+                  disabled={saving}
+                  className="h-[40px] px-6 text-sm font-bold tracking-[2.8px] uppercase border border-red-400 text-red-400 hover:bg-red-400 hover:text-white transition-colors disabled:opacity-30"
+                >
+                  {t("form.delete")}
+                </button>
+              )}
+              <button
+                onClick={handleSave}
+                disabled={saving || !imageUrl || !titleRu || !titleEn}
+                className="h-[40px] flex-1 text-sm font-bold tracking-[2.8px] uppercase bg-text-muted text-white hover:bg-text transition-colors disabled:opacity-30"
+              >
+                {saving ? "..." : isEdit ? t("form.update") : t("form.save")}
+              </button>
+            </div>
           </div>
         </motion.div>
       </div>

@@ -73,8 +73,9 @@
     "password": "Password",
     "wrongPassword": "Wrong password",
     "submit": "SIGN IN",
-    "logout": "LOGOUT",
+    "logout": "Logout",
     "addArtwork": "ADD ARTWORK",
+    "editArtwork": "EDIT ARTWORK",
     "form": {
       "image": "IMAGE",
       "changeImage": "Change image",
@@ -95,7 +96,12 @@
       "socials": "SOCIAL LINKS",
       "addSocial": "Add link",
       "review": "REVIEW",
-      "save": "SAVE"
+      "thumbnail": "CATALOG THUMBNAIL",
+      "cropThumbnail": "CROP THUMBNAIL",
+      "recrop": "Re-crop",
+      "save": "SAVE",
+      "update": "UPDATE",
+      "delete": "DELETE"
     }
   },
   "language": {

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { put } from "@vercel/blob";
 import { verifyToken } from "@/lib/admin";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();
@@ -16,10 +17,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const blob = await put(`uploads/${Date.now()}-${file.name}`, file, {
-    access: "public",
-    contentType: file.type,
-  });
+  const uploadsDir = path.join(process.cwd(), "public", "uploads");
+  await mkdir(uploadsDir, { recursive: true });
 
-  return NextResponse.json({ url: blob.url });
+  const filename = `${Date.now()}-${file.name}`;
+  const filepath = path.join(uploadsDir, filename);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await writeFile(filepath, buffer);
+
+  return NextResponse.json({ url: `/uploads/${filename}` });
 }
