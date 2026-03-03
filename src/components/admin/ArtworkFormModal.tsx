@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import type { Artwork } from "@/data/artworks";
 import ImageUpload from "./ImageUpload";
 import ImageCropper from "./ImageCropper";
 import ToolSelector from "./ToolSelector";
+import ContactPickerModal from "./ContactPickerModal";
+import CoworkerPickerModal from "./CoworkerPickerModal";
+import type { Contact, Coworker } from "@/lib/blob";
 
 const socialOptions = [
   "vk",
@@ -18,10 +21,12 @@ const socialOptions = [
   "deviantart",
 ];
 
+
 type Props = {
   category: string;
   subcategory?: string;
   artwork?: Artwork;
+  initialImageUrl?: string;
   onClose: () => void;
   onSaved: (artwork: Artwork) => void;
   onDeleted?: (id: string) => void;
@@ -31,6 +36,7 @@ export default function ArtworkFormModal({
   category,
   subcategory,
   artwork: editArtwork,
+  initialImageUrl,
   onClose,
   onSaved,
   onDeleted,
@@ -39,9 +45,10 @@ export default function ArtworkFormModal({
   const t = useTranslations("admin");
 
   // Image state
-  const [imageUrl, setImageUrl] = useState(editArtwork?.image || "");
+  const [imageUrl, setImageUrl] = useState(editArtwork?.image || initialImageUrl || "");
   const [thumbnailUrl, setThumbnailUrl] = useState(editArtwork?.thumbnail || "");
   const [showCropper, setShowCropper] = useState(false);
+  const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [logoUrl, setLogoUrl] = useState(editArtwork?.logo || "");
   const [logoUploading, setLogoUploading] = useState(false);
   const [sketchUrl, setSketchUrl] = useState(editArtwork?.sketch || "");
@@ -64,32 +71,119 @@ export default function ArtworkFormModal({
   const [clientRole, setClientRole] = useState(editArtwork?.clientRole || "");
   const [clientAvatar, setClientAvatar] = useState(editArtwork?.clientAvatar || "");
   const [socials, setSocials] = useState<{ icon: string; url: string }[]>(editArtwork?.clientSocials || []);
+  const [subscribers, setSubscribers] = useState(editArtwork?.subscribers || "");
+  const [subsFetching, setSubsFetching] = useState(false);
+  const subsFetchingRef = useRef(false);
+  const [subsChannelInput, setSubsChannelInput] = useState("");
+  const [subsError, setSubsError] = useState("");
   const [reviewRu, setReviewRu] = useState(editArtwork?.review?.ru || "");
   const [reviewEn, setReviewEn] = useState(editArtwork?.review?.en || "");
+
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedContactId, setSelectedContactId] = useState("");
+  const [showContactModal, setShowContactModal] = useState(false);
+
+  const [coworkersList, setCoworkersList] = useState<Coworker[]>([]);
+  const [selectedCoworkers, setSelectedCoworkers] = useState<Coworker[]>(
+    (editArtwork?.coworkers ?? []).map((cw, i) => ({ id: cw.id ?? `cw-init-${i}`, ...cw }))
+  );
+  const [showCoworkerModal, setShowCoworkerModal] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.body.style.overflow = "";
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [onClose]);
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  const fetchSubs = async (url: string) => {
+    if (!url || subsFetchingRef.current) return;
+    subsFetchingRef.current = true;
+    setSubsFetching(true);
+    setSubsError("");
+    try {
+      const res = await fetch(`/api/youtube-subs?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      if (!res.ok) setSubsError(data.error || "Error");
+      else { setSubscribers(data.formatted); setSubsChannelInput(""); }
+    } catch {
+      setSubsError("Network error");
+    }
+    subsFetchingRef.current = false;
+    setSubsFetching(false);
+  };
+
+  useEffect(() => {
+    if (cat !== "youtube") return;
+    const youtubeUrl = socials.find((s) => s.icon === "youtube" && s.url)?.url;
+    if (youtubeUrl) fetchSubs(youtubeUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cat]);
+
+  useEffect(() => {
+    fetch("/api/contacts")
+      .then((r) => r.json())
+      .then((data) => setContacts(Array.isArray(data) ? data : []))
+      .catch(() => {});
+    fetch("/api/coworkers")
+      .then((r) => r.json())
+      .then((data: Coworker[]) => {
+        if (!Array.isArray(data)) return;
+        setCoworkersList(data);
+        // Обновляем selectedCoworkers свежими данными из списка (на случай если соцсети были добавлены позже)
+        setSelectedCoworkers((prev) =>
+          prev.map((cw) => {
+            const fresh = cw.id ? data.find((c) => c.id === cw.id) : undefined;
+            return fresh ? { ...fresh } : cw;
+          })
+        );
+      })
+      .catch(() => {});
+  }, []);
+
+  const applyContact = (contact: Contact) => {
+    setClientName(contact.clientName);
+    setClient(contact.client || "");
+    setClientRole(contact.clientRole || "");
+    setClientAvatar(contact.clientAvatar || "");
+    setSocials(contact.clientSocials || []);
+    setClientExpanded(true);
+    if (cat === "youtube") {
+      const youtubeUrl = contact.clientSocials?.find((s) => s.icon === "youtube" && s.url)?.url;
+      if (youtubeUrl) {
+        setSubscribers("");
+        fetchSubs(youtubeUrl);
+      }
+    }
+  };
 
   const handleImageUploaded = (url: string) => {
     setImageUrl(url);
-    // Don't auto-open cropper — image stays as-is, cropper is separate for thumbnail
+    const img = new window.Image();
+    img.onload = () => setResolution(`${img.naturalWidth}x${img.naturalHeight}`);
+    img.src = url;
   };
 
   const handleCropped = (url: string) => {
     setThumbnailUrl(url);
     setShowCropper(false);
+  };
+
+  const handleThumbnailUpload = async (file: File) => {
+    setThumbnailUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        setThumbnailUrl(data.url);
+        setShowCropper(false);
+      }
+    } finally {
+      setThumbnailUploading(false);
+    }
   };
 
   const handleLogoUpload = async (file: File) => {
@@ -116,6 +210,9 @@ export default function ArtworkFormModal({
     const next = [...socials];
     next[i] = { ...next[i], [field]: val };
     setSocials(next);
+    if (field === "icon" && val === "youtube" && next[i].url && cat === "youtube") {
+      fetchSubs(next[i].url);
+    }
   };
 
   const removeSocial = (i: number) => {
@@ -144,7 +241,13 @@ export default function ArtworkFormModal({
       clientName: clientName || undefined,
       clientRole: clientRole || undefined,
       clientAvatar: clientAvatar || undefined,
+      clientAvatarBg: editArtwork?.clientAvatarBg,
+      objectPosition: editArtwork?.objectPosition,
+      subscribers: subscribers || undefined,
       clientSocials: socials.length > 0 ? socials.filter((s) => s.url) : undefined,
+      coworkers: selectedCoworkers.length > 0
+        ? selectedCoworkers.map(({ id, name, role, avatar, socials: cws }) => ({ id, name, role, avatar, socials: cws }))
+        : undefined,
       review:
         reviewRu || reviewEn
           ? { ru: reviewRu, en: reviewEn }
@@ -204,6 +307,7 @@ export default function ArtworkFormModal({
     "text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary mb-1 block";
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -213,26 +317,16 @@ export default function ArtworkFormModal({
     >
       <div className="absolute inset-0 bg-white/95" onClick={onClose} />
 
-      {/* Close button */}
-      <button
-        onClick={onClose}
-        className="absolute top-[64px] right-[64px] z-10 w-[16px] h-[16px] flex items-center justify-center text-[#808080] hover:text-[#404040] transition-colors"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <path d="M1 1L15 15M15 1L1 15" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
-      </button>
-
       {/* Content */}
       <div
-        className="absolute inset-0 flex items-center justify-center p-[64px]"
+        className="absolute inset-0 flex items-center justify-center px-[40px] py-[48px]"
         onClick={onClose}
       >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="bg-white max-w-[600px] w-full max-h-[80vh] overflow-y-auto shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)] p-[40px]"
+          className="bg-white max-w-[600px] w-full max-h-[90vh] overflow-y-auto shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)] px-[80px] py-[40px]"
           onClick={(e) => e.stopPropagation()}
         >
           <h2 className="text-sm font-bold tracking-[2.8px] uppercase text-text-muted mb-8">
@@ -240,36 +334,50 @@ export default function ArtworkFormModal({
           </h2>
 
           <div className="flex flex-col gap-6">
-            {/* 1. Main image */}
-            <div>
-              <label className={labelClass}>{t("form.image")}</label>
-              {!imageUrl ? (
-                <ImageUpload onUploaded={handleImageUploaded} />
-              ) : (
-                <div className="flex items-center gap-3">
-                  <div className="relative w-[80px] h-[80px] overflow-hidden">
+            {/* 1. Main image + Sketch — side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Main image */}
+              <div>
+                <label className={labelClass}>{t("form.image")}</label>
+                {!imageUrl ? (
+                  <ImageUpload onUploaded={handleImageUploaded} square />
+                ) : (
+                  <div className="relative aspect-square w-full overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={imageUrl}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={imageUrl} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => { setImageUrl(""); setThumbnailUrl(""); }}
+                      className="absolute top-1 right-1 w-5 h-5 bg-white/80 rounded-full flex items-center justify-center text-[10px] text-[#808080] hover:text-text"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImageUrl("");
-                      setThumbnailUrl("");
-                    }}
-                    className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
-                  >
-                    {t("form.changeImage")}
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
+
+              {/* Sketch */}
+              <div>
+                <label className={labelClass}>{t("form.sketch")}</label>
+                {!sketchUrl ? (
+                  <ImageUpload onUploaded={setSketchUrl} square />
+                ) : (
+                  <div className="relative aspect-square w-full overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={sketchUrl} alt="" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setSketchUrl("")}
+                      className="absolute top-1 right-1 w-5 h-5 bg-white/80 rounded-full flex items-center justify-center text-[10px] text-[#808080] hover:text-text"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* 1b. Thumbnail crop (for catalog card) */}
+            {/* 1b. Thumbnail (crop or upload) */}
             {imageUrl && (
               <div>
                 <label className={labelClass}>{t("form.thumbnail")}</label>
@@ -277,30 +385,61 @@ export default function ArtworkFormModal({
                   <ImageCropper imageUrl={imageUrl} onCropped={handleCropped} />
                 ) : thumbnailUrl ? (
                   <div className="flex items-center gap-3">
-                    <div className="relative w-[80px] h-[80px] overflow-hidden">
+                    <div className="relative w-[80px] h-[80px] overflow-hidden shrink-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={thumbnailUrl}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" />
                     </div>
+                    <div className="flex flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowCropper(true)}
+                        className="text-[12px] text-[#c0c0c0] hover:text-text-muted text-left"
+                      >
+                        {t("form.recrop")}
+                      </button>
+                      <label className="text-[12px] text-[#c0c0c0] hover:text-text-muted cursor-pointer">
+                        {thumbnailUploading ? "..." : t("form.reupload")}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleThumbnailUpload(file);
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setThumbnailUrl("")}
+                        className="text-[12px] text-[#c0c0c0] hover:text-[#F87777] text-left"
+                      >
+                        {t("form.changeImage")} ✕
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setShowCropper(true)}
-                      className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                      className="text-[12px] text-[#c0c0c0] hover:text-text-muted border border-[#c0c0c0] h-[30px] px-4 transition-colors"
                     >
-                      {t("form.recrop")}
+                      {t("form.cropThumbnail")}
                     </button>
+                    <label className="text-[12px] text-[#c0c0c0] hover:text-text-muted border border-dashed border-[#c0c0c0] h-[30px] px-4 flex items-center cursor-pointer transition-colors">
+                      {thumbnailUploading ? "..." : t("form.uploadThumbnail")}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleThumbnailUpload(file);
+                        }}
+                      />
+                    </label>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowCropper(true)}
-                    className="text-[12px] text-[#c0c0c0] hover:text-text-muted border border-[#c0c0c0] h-[30px] px-4"
-                  >
-                    {t("form.cropThumbnail")}
-                  </button>
                 )}
               </div>
             )}
@@ -340,44 +479,22 @@ export default function ArtworkFormModal({
               </div>
             )}
 
-            {/* 2. Sketch */}
-            <div>
-              <label className={labelClass}>{t("form.sketch")}</label>
-              {sketchUrl ? (
-                <div className="flex items-center gap-3">
-                  <div className="relative w-[80px] h-[80px] overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={sketchUrl} alt="" className="w-full h-full object-cover" />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSketchUrl("")}
-                    className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
-                  >
-                    {t("form.changeImage")}
-                  </button>
-                </div>
-              ) : (
-                <ImageUpload onUploaded={setSketchUrl} compact />
-              )}
-            </div>
-
             {/* 3. Title */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>{t("form.titleRu")}</label>
-                <input
-                  className={inputClass}
-                  value={titleRu}
-                  onChange={(e) => setTitleRu(e.target.value)}
-                />
-              </div>
               <div>
                 <label className={labelClass}>{t("form.titleEn")}</label>
                 <input
                   className={inputClass}
                   value={titleEn}
                   onChange={(e) => setTitleEn(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>{t("form.titleRu")}</label>
+                <input
+                  className={inputClass}
+                  value={titleRu}
+                  onChange={(e) => setTitleRu(e.target.value)}
                 />
               </div>
             </div>
@@ -411,6 +528,47 @@ export default function ArtworkFormModal({
                 </select>
               </div>
             </div>
+
+            {/* 4b. Subscribers (YouTube only) */}
+            {cat === "youtube" && (
+              <div>
+                <label className={labelClass}>{t("form.subscribers")}</label>
+                <div className="flex gap-2">
+                  <input
+                    className={`${inputClass} flex-1`}
+                    value={subscribers}
+                    onChange={(e) => setSubscribers(e.target.value)}
+                    placeholder="1.5M"
+                  />
+                  <button
+                    type="button"
+                    disabled={subsFetching}
+                    onClick={() => {
+                      const youtubeUrl =
+                        socials.find((s) => s.icon === "youtube" && s.url)?.url ||
+                        subsChannelInput;
+                      if (!youtubeUrl) { setSubsChannelInput(" "); return; }
+                      fetchSubs(youtubeUrl);
+                    }}
+                    className="h-[30px] px-3 border border-[#c0c0c0] text-[12px] text-[#808080] hover:border-[#808080] transition-colors disabled:opacity-40 shrink-0"
+                  >
+                    {subsFetching ? "..." : "↓"}
+                  </button>
+                </div>
+                {subsChannelInput !== "" && !socials.find((s) => s.icon === "youtube" && s.url) && (
+                  <input
+                    className={`${inputClass} mt-2`}
+                    value={subsChannelInput.trim()}
+                    onChange={(e) => setSubsChannelInput(e.target.value)}
+                    placeholder="youtube.com/@channel"
+                    autoFocus
+                  />
+                )}
+                {subsError && (
+                  <p className="text-[11px] text-red-400 mt-1">{subsError}</p>
+                )}
+              </div>
+            )}
 
             {/* 5. Year */}
             <div>
@@ -460,6 +618,31 @@ export default function ArtworkFormModal({
               >
                 {t("form.clientInfo")} {clientExpanded ? "▲" : "▼"}
               </button>
+
+              {/* Contact picker */}
+              <div className="flex gap-2 items-center mt-3">
+                <select
+                  className="flex-1 h-[30px] border border-[#c0c0c0] text-sm outline-none px-2 text-[#808080]"
+                  value={selectedContactId}
+                  onChange={(e) => {
+                    setSelectedContactId(e.target.value);
+                    const contact = contacts.find((c) => c.id === e.target.value);
+                    if (contact) applyContact(contact);
+                  }}
+                >
+                  <option value="">— выбрать контакт —</option>
+                  {contacts.map((c) => (
+                    <option key={c.id} value={c.id}>{c.clientName}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowContactModal(true)}
+                  className="w-[30px] h-[30px] border border-[#c0c0c0] text-[#808080] hover:border-[#808080] hover:text-text-muted flex items-center justify-center text-lg leading-none shrink-0 transition-colors"
+                >
+                  +
+                </button>
+              </div>
 
               {clientExpanded && (
                 <div className="mt-4 flex flex-col gap-4">
@@ -533,6 +716,11 @@ export default function ArtworkFormModal({
                             onChange={(e) =>
                               updateSocial(i, "url", e.target.value)
                             }
+                            onBlur={() => {
+                              if (s.icon === "youtube" && s.url && cat === "youtube") {
+                                fetchSubs(s.url);
+                              }
+                            }}
                             placeholder="https://..."
                           />
                           <button
@@ -559,21 +747,75 @@ export default function ArtworkFormModal({
               )}
             </div>
 
-            {/* 10. Review */}
+            {/* 10. Coworkers */}
+            <div>
+              <label className={labelClass}>{t("form.coworkers")}</label>
+              <div className="flex flex-col gap-2">
+                {selectedCoworkers.map((cw, i) => (
+                  <div key={cw.id} className="flex items-center gap-2 bg-[#f5f5f5] px-3 py-2">
+                    {cw.avatar && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={cw.avatar} alt="" className="w-[24px] h-[24px] rounded-full object-cover shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-bold tracking-[1.2px] text-[#808080] uppercase truncate">{cw.name}</p>
+                      {cw.role && (
+                        <p className="text-[11px] text-[#c0c0c0] tracking-[1px] uppercase truncate">{cw.role}</p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCoworkers((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="text-[#c0c0c0] hover:text-text-muted text-sm shrink-0"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <div className="flex gap-2 items-center">
+                  <select
+                    className="flex-1 h-[30px] border border-[#c0c0c0] text-sm outline-none px-2 text-[#808080]"
+                    value=""
+                    onChange={(e) => {
+                      const cw = coworkersList.find((c) => c.id === e.target.value);
+                      if (cw && !selectedCoworkers.find((s) => s.id === cw.id)) {
+                        setSelectedCoworkers((prev) => [...prev, cw]);
+                      }
+                    }}
+                  >
+                    <option value="">— добавить коворкера —</option>
+                    {coworkersList
+                      .filter((cw) => !selectedCoworkers.find((s) => s.id === cw.id))
+                      .map((cw) => (
+                        <option key={cw.id} value={cw.id}>{cw.name}</option>
+                      ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowCoworkerModal(true)}
+                    className="w-[30px] h-[30px] border border-[#c0c0c0] text-[#808080] hover:border-[#808080] hover:text-text-muted flex items-center justify-center text-lg leading-none shrink-0 transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 11. Review */}
             <div>
               <label className={labelClass}>{t("form.review")}</label>
               <div className="flex flex-col gap-2">
                 <textarea
                   className="w-full h-[80px] bg-[#f5f5f5] text-sm outline-none resize-none p-3"
-                  value={reviewRu}
-                  onChange={(e) => setReviewRu(e.target.value)}
-                  placeholder="RU"
-                />
-                <textarea
-                  className="w-full h-[80px] bg-[#f5f5f5] text-sm outline-none resize-none p-3"
                   value={reviewEn}
                   onChange={(e) => setReviewEn(e.target.value)}
                   placeholder="EN"
+                />
+                <textarea
+                  className="w-full h-[80px] bg-[#f5f5f5] text-sm outline-none resize-none p-3"
+                  value={reviewRu}
+                  onChange={(e) => setReviewRu(e.target.value)}
+                  placeholder="RU"
                 />
               </div>
             </div>
@@ -606,5 +848,51 @@ export default function ArtworkFormModal({
         </motion.div>
       </div>
     </motion.div>
+
+    {showContactModal && (
+      <ContactPickerModal
+        onClose={() => setShowContactModal(false)}
+        onSaved={(contact) => {
+          setContacts((prev) => {
+            const idx = prev.findIndex((c) => c.id === contact.id);
+            if (idx === -1) return [...prev, contact];
+            const next = [...prev];
+            next[idx] = contact;
+            return next;
+          });
+          setSelectedContactId(contact.id);
+          applyContact(contact);
+        }}
+        onDeleted={(id) => {
+          setContacts((prev) => prev.filter((c) => c.id !== id));
+          if (selectedContactId === id) setSelectedContactId("");
+        }}
+      />
+    )}
+
+    {showCoworkerModal && (
+      <CoworkerPickerModal
+        onClose={() => setShowCoworkerModal(false)}
+        onSaved={(coworker) => {
+          setCoworkersList((prev) => {
+            const idx = prev.findIndex((c) => c.id === coworker.id);
+            if (idx === -1) return [...prev, coworker];
+            const next = [...prev];
+            next[idx] = coworker;
+            return next;
+          });
+          setSelectedCoworkers((prev) =>
+            prev.find((c) => c.id === coworker.id)
+              ? prev.map((c) => c.id === coworker.id ? coworker : c)
+              : [...prev, coworker]
+          );
+        }}
+        onDeleted={(id) => {
+          setCoworkersList((prev) => prev.filter((c) => c.id !== id));
+          setSelectedCoworkers((prev) => prev.filter((c) => c.id !== id));
+        }}
+      />
+    )}
+    </>
   );
 }

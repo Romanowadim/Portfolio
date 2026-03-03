@@ -6,10 +6,11 @@ import Image from "next/image";
 type Props = {
   onUploaded: (url: string) => void;
   compact?: boolean;
+  square?: boolean;
   label?: string;
 };
 
-export default function ImageUpload({ onUploaded, compact, label }: Props) {
+export default function ImageUpload({ onUploaded, compact, square, label }: Props) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
@@ -59,7 +60,7 @@ export default function ImageUpload({ onUploaded, compact, label }: Props) {
     [upload]
   );
 
-  const size = compact ? "h-[80px] w-[80px]" : "h-[200px] w-full";
+  const size = compact ? "h-[80px] w-[80px]" : square ? "aspect-square w-full" : "h-[200px] w-full";
 
   if (preview) {
     return (
@@ -84,6 +85,7 @@ export default function ImageUpload({ onUploaded, compact, label }: Props) {
       </div>
     );
   }
+
 
   return (
     <div>

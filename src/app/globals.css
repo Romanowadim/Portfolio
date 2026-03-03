@@ -34,6 +34,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Russian typography: reduce letter-spacing globally — Cyrillic looks cramped with Latin-scale tracking */
+html[lang="ru"] * {
+  letter-spacing: 0.3px !important;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

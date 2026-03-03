@@ -8,6 +8,9 @@ import { useAdmin } from "@/components/admin/AdminProvider";
 import { useRouter } from "@/i18n/navigation";
 import { artworks as staticArtworks, Artwork } from "@/data/artworks";
 import ArtworkFormModal from "@/components/admin/ArtworkFormModal";
+import ContactPickerModal from "@/components/admin/ContactPickerModal";
+import CoworkerPickerModal from "@/components/admin/CoworkerPickerModal";
+import type { Contact, Coworker } from "@/lib/blob";
 
 const staticIds = new Set(staticArtworks.map((a) => a.id));
 
@@ -52,6 +55,7 @@ function ArtworkStatRow({
   onDeleted: (id: string) => void;
   onNavigate: () => void;
 }) {
+  const t = useTranslations("admin");
   const [deleting, setDeleting] = useState(false);
   const isDynamic = !staticIds.has(artwork.id);
 
@@ -135,6 +139,16 @@ function ArtworkStatRow({
       {/* Separator */}
       <span className="w-px h-[32px] bg-[#ebebeb] shrink-0" />
 
+      {/* Versions */}
+      <div className="shrink-0 w-[60px]">
+        <p className="text-[12px] font-bold tracking-[1.2px] text-[#c0c0c0]">
+          {artwork.sketch ? "F+S" : "F"}
+        </p>
+      </div>
+
+      {/* Separator */}
+      <span className="w-px h-[32px] bg-[#ebebeb] shrink-0" />
+
       {/* Spacer */}
       <div className="flex-1" />
 
@@ -162,13 +176,255 @@ function ArtworkStatRow({
         <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" clipRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" />
         </svg>
-        <span className="text-[12px] font-medium tracking-wide">Delete</span>
+        <span className="text-[12px] font-medium tracking-wide">{t("delete")}</span>
       </button>
     </div>
   );
 }
 
-const sections = [{ key: "statistic" }] as const;
+function AddArtworkButton({
+  onClick,
+  label,
+  onDropImage,
+}: {
+  onClick: () => void;
+  label: string;
+  onDropImage: (url: string) => void;
+}) {
+  const [dragOver, setDragOver] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        onDropImage(data.url);
+      }
+    } catch {}
+    setUploading(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
+
+  const handleDragLeave = () => setDragOver(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file?.type.startsWith("image/")) uploadFile(file);
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      style={{ height: dragOver ? 200 : undefined }}
+      className={`w-full flex items-center justify-center gap-[8px] border-2 border-dashed px-[16px] py-[14px] transition-all duration-200 ${
+        dragOver
+          ? "border-[#808080] bg-[#c0c0c0]/10 text-[#808080]"
+          : "border-[#e0e0e0] text-[#c0c0c0] hover:text-[#808080] hover:border-[#c0c0c0] hover:bg-[#c0c0c0]/5"
+      }`}
+    >
+      {uploading ? (
+        <span className="text-[12px] font-bold tracking-[1.8px] uppercase animate-pulse text-[#c0c0c0]">...</span>
+      ) : dragOver ? (
+        <svg width="24" height="24" viewBox="0 0 16 16" fill="none">
+          <path d="M8 1v14M1 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        </svg>
+      ) : (
+        <>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 1v14M1 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <span className="text-[12px] font-bold tracking-[1.8px] uppercase">{label}</span>
+        </>
+      )}
+    </button>
+  );
+}
+
+const SOCIAL_ICONS: Record<string, string> = {
+  youtube: "YT", vk: "VK", instagram: "IG", telegram: "TG",
+  artstation: "AS", behance: "BE", deviantart: "DA",
+};
+
+function ContactRow({ contact, onEdit, onDeleted }: {
+  contact: Contact;
+  onEdit: () => void;
+  onDeleted: (id: string) => void;
+}) {
+  const t = useTranslations("admin");
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirm(`Delete "${contact.clientName}"?`)) return;
+    setDeleting(true);
+    try {
+      await fetch("/api/contacts", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: contact.id }),
+      });
+      onDeleted(contact.id);
+    } catch {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-[16px] bg-white px-[16px] py-[12px]">
+      {/* Avatar */}
+      <div className="relative w-[52px] h-[52px] shrink-0 rounded-full overflow-hidden bg-[#f0f0f0] flex items-center justify-center">
+        {contact.clientAvatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={contact.clientAvatar} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-[18px] font-bold text-[#c0c0c0]">
+            {contact.clientName.charAt(0).toUpperCase()}
+          </span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-bold tracking-[1.5px] text-[#808080] uppercase truncate">
+          {contact.clientName}
+        </p>
+        {(contact.clientRole || contact.client) && (
+          <p className="text-[12px] font-medium tracking-[1.2px] text-[#c0c0c0] uppercase mt-[2px] truncate">
+            {[contact.clientRole, contact.client].filter(Boolean).join(" · ")}
+          </p>
+        )}
+        {contact.clientSocials && contact.clientSocials.length > 0 && (
+          <div className="flex gap-[6px] mt-[4px]">
+            {contact.clientSocials.map((s, i) => (
+              <span key={i} className="text-[10px] font-bold tracking-[1px] text-[#c0c0c0] bg-[#f5f5f5] px-[5px] py-[1px]">
+                {SOCIAL_ICONS[s.icon] ?? s.icon.toUpperCase()}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Edit */}
+      <button
+        onClick={onEdit}
+        className="shrink-0 w-[16px] h-[16px] flex items-center justify-center text-[#c0c0c0] hover:text-[#808080] transition-colors"
+        title="Edit"
+      >
+        <svg width="16" height="16" viewBox="0 0 20 19.9025" fill="none">
+          <path d="M12.4365 3.32148L16.5049 7.38989L6.20657 17.6883L2.14042 13.6198L12.4365 3.32148ZM19.5921 2.34027L17.7777 0.525894C17.0765 -0.175298 15.938 -0.175298 15.2344 0.525894L13.4964 2.26388L17.5648 6.33233L19.5921 4.30507C20.136 3.76118 20.136 2.88411 19.5921 2.34027ZM0.0113215 19.3383C-0.0627191 19.6716 0.238132 19.9701 0.571391 19.8891L5.105 18.7899L1.03885 14.7215L0.0113215 19.3383Z" fill="currentColor" />
+        </svg>
+      </button>
+
+      {/* Delete */}
+      <button
+        onClick={handleDelete}
+        disabled={deleting}
+        className="shrink-0 flex items-center gap-[5px] text-text-light hover:text-[#F87777] transition-colors disabled:opacity-40"
+        title="Delete"
+      >
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" clipRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" />
+        </svg>
+        <span className="text-[12px] font-medium tracking-wide">{t("delete")}</span>
+      </button>
+    </div>
+  );
+}
+
+function CoworkerRow({ coworker, onEdit, onDeleted }: {
+  coworker: Coworker;
+  onEdit: () => void;
+  onDeleted: (id: string) => void;
+}) {
+  const t = useTranslations("admin");
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirm(`Delete "${coworker.name}"?`)) return;
+    setDeleting(true);
+    try {
+      await fetch("/api/coworkers", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: coworker.id }),
+      });
+      onDeleted(coworker.id);
+    } catch {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-[16px] bg-white px-[16px] py-[12px]">
+      <div className="relative w-[52px] h-[52px] shrink-0 rounded-full overflow-hidden bg-[#f0f0f0] flex items-center justify-center">
+        {coworker.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={coworker.avatar} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-[18px] font-bold text-[#c0c0c0]">
+            {coworker.name.charAt(0).toUpperCase()}
+          </span>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-bold tracking-[1.5px] text-[#808080] uppercase truncate">
+          {coworker.name}
+        </p>
+        {coworker.role && (
+          <p className="text-[12px] font-medium tracking-[1.2px] text-[#c0c0c0] uppercase mt-[2px] truncate">
+            {coworker.role}
+          </p>
+        )}
+        {coworker.socials && coworker.socials.length > 0 && (
+          <div className="flex gap-[6px] mt-[4px]">
+            {coworker.socials.map((s, i) => (
+              <span key={i} className="text-[10px] font-bold tracking-[1px] text-[#c0c0c0] bg-[#f5f5f5] px-[5px] py-[1px]">
+                {SOCIAL_ICONS[s.icon] ?? s.icon.toUpperCase()}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={onEdit}
+        className="shrink-0 w-[16px] h-[16px] flex items-center justify-center text-[#c0c0c0] hover:text-[#808080] transition-colors"
+        title="Edit"
+      >
+        <svg width="16" height="16" viewBox="0 0 20 19.9025" fill="none">
+          <path d="M12.4365 3.32148L16.5049 7.38989L6.20657 17.6883L2.14042 13.6198L12.4365 3.32148ZM19.5921 2.34027L17.7777 0.525894C17.0765 -0.175298 15.938 -0.175298 15.2344 0.525894L13.4964 2.26388L17.5648 6.33233L19.5921 4.30507C20.136 3.76118 20.136 2.88411 19.5921 2.34027ZM0.0113215 19.3383C-0.0627191 19.6716 0.238132 19.9701 0.571391 19.8891L5.105 18.7899L1.03885 14.7215L0.0113215 19.3383Z" fill="currentColor" />
+        </svg>
+      </button>
+
+      <button
+        onClick={handleDelete}
+        disabled={deleting}
+        className="shrink-0 flex items-center gap-[5px] text-text-light hover:text-[#F87777] transition-colors disabled:opacity-40"
+        title="Delete"
+      >
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" clipRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" />
+        </svg>
+        <span className="text-[12px] font-medium tracking-wide">{t("delete")}</span>
+      </button>
+    </div>
+  );
+}
+
+const sections = [{ key: "statistic" }, { key: "contacts" }, { key: "coworkers" }] as const;
 
 export default function CabinetPage() {
   const { isAdmin } = useAdmin();
@@ -176,12 +432,27 @@ export default function CabinetPage() {
   const locale = useLocale() as "ru" | "en";
   const t = useTranslations("admin");
 
-  const [activeSection, setActiveSection] = useState<string>("statistic");
+  const [activeSection, setActiveSection] = useState<string | null>("statistic");
   const [sortBy, setSortBy] = useState<"popularity" | "date" | "category">("date");
   const [viewCounts, setViewCounts] = useState<Record<string, { total: number; recent: number }>>({});
   const [dynamicArtworks, setDynamicArtworks] = useState<Artwork[]>([]);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [initialImageUrl, setInitialImageUrl] = useState<string | undefined>();
+
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [isCreatingContact, setIsCreatingContact] = useState(false);
+
+  const [coworkers, setCoworkers] = useState<Coworker[]>([]);
+  const [editingCoworker, setEditingCoworker] = useState<Coworker | null>(null);
+  const [isCreatingCoworker, setIsCreatingCoworker] = useState(false);
+
+  const openCreate = (imageUrl?: string) => {
+    setInitialImageUrl(imageUrl);
+    setIsCreating(true);
+  };
 
   useEffect(() => {
     if (!isAdmin) router.replace("/");
@@ -203,6 +474,22 @@ export default function CabinetPage() {
       .catch(() => {});
   }, [activeSection]);
 
+  useEffect(() => {
+    if (activeSection !== "contacts") return;
+    fetch("/api/contacts")
+      .then((r) => r.json())
+      .then((data: Contact[]) => setContacts(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (activeSection !== "coworkers") return;
+    fetch("/api/coworkers")
+      .then((r) => r.json())
+      .then((data: Coworker[]) => setCoworkers(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [activeSection]);
+
   if (!isAdmin) return null;
 
   // Merge static + dynamic; dynamic overrides static (same id); filter deleted
@@ -215,7 +502,11 @@ export default function CabinetPage() {
 
   const sortedArtworks = sortBy === "popularity"
     ? [...allArtworks].sort((a, b) => (viewCounts[b.id]?.total ?? 0) - (viewCounts[a.id]?.total ?? 0))
-    : allArtworks; // "date" / "category" — preserves insertion order
+    : [...allArtworks].sort((a, b) => {
+        const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return db - da; // newest first
+      });
 
   const categoryLabel = (cat: Artwork["category"]) => {
     const key = `category${cat.charAt(0).toUpperCase()}${cat.slice(1)}` as Parameters<typeof t>[0];
@@ -273,46 +564,50 @@ export default function CabinetPage() {
             className="fixed top-0 bottom-0 right-0 left-[calc(33.75vw+24px)] z-10 overflow-y-auto bg-[#f5f5f5]"
             style={{ paddingTop: 148 + 24, paddingBottom: 24, paddingRight: 24 }}
           >
-            {/* Sort controls */}
-            <div className="flex items-center justify-center gap-[16px] mb-[48px]">
-              {(["date", "popularity", "category"] as const).map((mode, i) => (
-                <React.Fragment key={mode}>
-                  {i > 0 && <span className="w-px h-[1em] bg-text-light/50 self-center" />}
-                  <button
-                    onClick={() => setSortBy(mode)}
-                    className={`text-[14px] tracking-wide transition-colors ${
-                      sortBy === mode ? "text-[#808080]" : "text-[#c0c0c0] hover:text-[#808080]"
-                    }`}
-                  >
-                    {t(mode === "popularity" ? "sortByPopularity" : mode === "category" ? "sortByCategory" : "sortByDate")}
-                  </button>
-                </React.Fragment>
-              ))}
-            </div>
-
-            {/* Table header */}
+            {/* Table header + sort controls in one row */}
             <div className="flex items-center gap-[16px] pr-[16px] pb-[8px]">
               <span className="w-[2px] h-[2em] bg-[#e0e0e0] shrink-0" />
               <p className="w-[314px] shrink-0 text-[10px] font-bold tracking-[1.8px] text-[#c0c0c0] uppercase">
-                Name / Info
+                {t("colNameInfo")}
               </p>
               <span className="w-[2px] h-[2em] bg-[#e0e0e0] shrink-0" />
               <p className="w-[120px] shrink-0 text-[10px] font-bold tracking-[1.8px] text-[#c0c0c0] uppercase">
-                Views
+                {t("colViews")}
               </p>
               <span className="w-[2px] h-[2em] bg-[#e0e0e0] shrink-0" />
               <p className="w-[130px] shrink-0 text-[10px] font-bold tracking-[1.8px] text-[#c0c0c0] uppercase">
-                Date
+                {t("colDate")}
               </p>
               <span className="w-[2px] h-[2em] bg-[#e0e0e0] shrink-0" />
+              <p className="w-[60px] shrink-0 text-[10px] font-bold tracking-[1.8px] text-[#c0c0c0] uppercase">
+                {t("colVersions")}
+              </p>
+              <span className="w-[2px] h-[2em] bg-[#e0e0e0] shrink-0" />
+              {/* Sort filters — right-aligned */}
+              <div className="flex-1 flex items-center justify-end gap-[12px]">
+                {(["date", "popularity", "category"] as const).map((mode, i) => (
+                  <React.Fragment key={mode}>
+                    {i > 0 && <span className="w-px h-[1em] bg-text-light/50 self-center" />}
+                    <button
+                      onClick={() => setSortBy(mode)}
+                      className={`text-[10px] font-bold tracking-[1.8px] uppercase transition-colors ${
+                        sortBy === mode ? "text-[#808080]" : "text-[#c0c0c0] hover:text-[#808080]"
+                      }`}
+                    >
+                      {t(mode === "popularity" ? "sortByPopularity" : mode === "category" ? "sortByCategory" : "sortByDate")}
+                    </button>
+                  </React.Fragment>
+                ))}
+              </div>
             </div>
 
             {sortBy === "category" ? (
               <div className="flex flex-col gap-[32px]">
-                {groupedByCategory.map((group) => (
+                <AddArtworkButton onClick={() => openCreate()} label={t("addArtwork")} onDropImage={(url) => openCreate(url)} />
+                {groupedByCategory.map((group, gi) => (
                   <div key={group.category}>
                     {/* Section header */}
-                    <div className="flex items-center gap-[12px] mt-[32px] mb-[32px]">
+                    <div className={`flex items-center gap-[12px] mb-[32px] ${gi === 0 ? "mt-0" : "mt-[32px]"}`}>
                       <p className="text-[14px] font-bold tracking-[2px] text-[#c0c0c0] uppercase shrink-0">
                         {categoryLabel(group.category)}
                       </p>
@@ -339,6 +634,7 @@ export default function CabinetPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-[4px]">
+                <AddArtworkButton onClick={() => openCreate()} label={t("addArtwork")} onDropImage={(url) => openCreate(url)} />
                 {sortedArtworks.map((artwork) => (
                   <ArtworkStatRow
                     key={artwork.id}
@@ -359,7 +655,186 @@ export default function CabinetPage() {
         )}
       </AnimatePresence>
 
-      {/* Edit modal */}
+      {/* Contacts panel */}
+      <AnimatePresence>
+        {activeSection === "contacts" && (
+          <motion.div
+            key="contacts-panel"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="fixed top-0 bottom-0 right-0 left-[calc(33.75vw+24px)] z-10 overflow-y-auto bg-[#f5f5f5]"
+            style={{ paddingTop: 148 + 24, paddingBottom: 24, paddingRight: 24 }}
+          >
+            <div className="flex flex-col gap-[4px]">
+              {/* Add button — spans full width */}
+              <button
+                onClick={() => setIsCreatingContact(true)}
+                className="w-full flex items-center justify-center gap-[8px] border-2 border-dashed border-[#e0e0e0] px-[16px] py-[14px] text-[#c0c0c0] hover:text-[#808080] hover:border-[#c0c0c0] hover:bg-[#c0c0c0]/5 transition-all duration-200"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1v14M1 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span className="text-[12px] font-bold tracking-[1.8px] uppercase">{t("addContact")}</span>
+              </button>
+
+              {contacts.length === 0 && (
+                <p className="text-center text-[12px] text-[#c0c0c0] py-[32px] tracking-[1.5px] uppercase">—</p>
+              )}
+
+              {contacts.map((contact, i) => i % 2 === 0 && (
+                <div key={contact.id} className="grid grid-cols-2 gap-[4px]">
+                  <ContactRow
+                    contact={contact}
+                    onEdit={() => setEditingContact(contact)}
+                    onDeleted={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))}
+                  />
+                  {contacts[i + 1] && (
+                    <ContactRow
+                      contact={contacts[i + 1]}
+                      onEdit={() => setEditingContact(contacts[i + 1])}
+                      onDeleted={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Coworkers panel */}
+      <AnimatePresence>
+        {activeSection === "coworkers" && (
+          <motion.div
+            key="coworkers-panel"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="fixed top-0 bottom-0 right-0 left-[calc(33.75vw+24px)] z-10 overflow-y-auto bg-[#f5f5f5]"
+            style={{ paddingTop: 148 + 24, paddingBottom: 24, paddingRight: 24 }}
+          >
+            <div className="flex flex-col gap-[4px]">
+              <button
+                onClick={() => setIsCreatingCoworker(true)}
+                className="w-full flex items-center justify-center gap-[8px] border-2 border-dashed border-[#e0e0e0] px-[16px] py-[14px] text-[#c0c0c0] hover:text-[#808080] hover:border-[#c0c0c0] hover:bg-[#c0c0c0]/5 transition-all duration-200"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1v14M1 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span className="text-[12px] font-bold tracking-[1.8px] uppercase">{t("addCoworker")}</span>
+              </button>
+
+              {coworkers.length === 0 && (
+                <p className="text-center text-[12px] text-[#c0c0c0] py-[32px] tracking-[1.5px] uppercase">—</p>
+              )}
+
+              {coworkers.map((coworker, i) => i % 2 === 0 && (
+                <div key={coworker.id} className="grid grid-cols-2 gap-[4px]">
+                  <CoworkerRow
+                    coworker={coworker}
+                    onEdit={() => setEditingCoworker(coworker)}
+                    onDeleted={(id) => setCoworkers((prev) => prev.filter((c) => c.id !== id))}
+                  />
+                  {coworkers[i + 1] && (
+                    <CoworkerRow
+                      coworker={coworkers[i + 1]}
+                      onEdit={() => setEditingCoworker(coworkers[i + 1])}
+                      onDeleted={(id) => setCoworkers((prev) => prev.filter((c) => c.id !== id))}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Create modal */}
+      <AnimatePresence>
+        {isCreating && (
+          <ArtworkFormModal
+            key="new"
+            category="personal"
+            initialImageUrl={initialImageUrl}
+            onClose={() => setIsCreating(false)}
+            onSaved={(created) => {
+              setDynamicArtworks((prev) => [...prev, created]);
+              setIsCreating(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Contact create modal */}
+      <AnimatePresence>
+        {isCreatingContact && (
+          <ContactPickerModal
+            key="new-contact"
+            onClose={() => setIsCreatingContact(false)}
+            onSaved={(contact) => {
+              setContacts((prev) => [...prev, contact]);
+              setIsCreatingContact(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Contact edit modal */}
+      <AnimatePresence>
+        {editingContact && (
+          <ContactPickerModal
+            key={editingContact.id}
+            contact={editingContact}
+            onClose={() => setEditingContact(null)}
+            onSaved={(updated) => {
+              setContacts((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+              setEditingContact(null);
+            }}
+            onDeleted={(id) => {
+              setContacts((prev) => prev.filter((c) => c.id !== id));
+              setEditingContact(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Coworker create modal */}
+      <AnimatePresence>
+        {isCreatingCoworker && (
+          <CoworkerPickerModal
+            key="new-coworker"
+            onClose={() => setIsCreatingCoworker(false)}
+            onSaved={(coworker) => {
+              setCoworkers((prev) => [...prev, coworker]);
+              setIsCreatingCoworker(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Coworker edit modal */}
+      <AnimatePresence>
+        {editingCoworker && (
+          <CoworkerPickerModal
+            key={editingCoworker.id}
+            coworker={editingCoworker}
+            onClose={() => setEditingCoworker(null)}
+            onSaved={(updated) => {
+              setCoworkers((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+              setEditingCoworker(null);
+            }}
+            onDeleted={(id) => {
+              setCoworkers((prev) => prev.filter((c) => c.id !== id));
+              setEditingCoworker(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit artwork modal */}
       <AnimatePresence>
         {editingArtwork && (
           <ArtworkFormModal

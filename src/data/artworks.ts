@@ -20,6 +20,7 @@ export type Artwork = {
   subscribers?: string;
   review?: { ru: string; en: string };
   clientSocials?: { icon: string; url: string }[];
+  coworkers?: { id?: string; name: string; role?: string; avatar?: string; socials?: { icon: string; url: string }[] }[];
   createdAt?: string; // ISO date string, set when artwork is first saved via admin
 };
 

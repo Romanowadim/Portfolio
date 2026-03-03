@@ -7,6 +7,7 @@ import { useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { Artwork } from "@/data/artworks";
 import { useAdmin } from "@/components/admin/AdminProvider";
+import type { Coworker } from "@/lib/blob";
 
 const toolInfo: Record<string, { fullName: string; since: number }> = {
   photoshop: { fullName: "Adobe Photoshop", since: 2009 },
@@ -37,7 +38,16 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [imgRatio, setImgRatio] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"final" | "sketch">("final");
+
+  // Reset view mode when navigating to another artwork
+  useEffect(() => {
+    setViewMode("final");
+  }, [artwork.id]);
+
+  const displayImage = viewMode === "sketch" && artwork.sketch ? artwork.sketch : artwork.image;
   const [viewStats, setViewStats] = useState<{ total: number; recent: number } | null>(null);
+  const [coworkerList, setCoworkerList] = useState<Coworker[]>([]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -48,6 +58,18 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
       })
       .catch(() => {});
   }, [isAdmin, artwork.id]);
+
+  // Fetch fresh coworker data from API
+  useEffect(() => {
+    if (!artwork.coworkers?.length) return;
+    fetch("/api/coworkers")
+      .then((r) => r.json())
+      .then((data: Coworker[]) => {
+        if (!Array.isArray(data)) return;
+        setCoworkerList(data);
+      })
+      .catch(() => {});
+  }, [artwork.id, artwork.coworkers?.length]);
 
   // Load image to get natural aspect ratio
   useEffect(() => {
@@ -154,58 +176,91 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
             className="flex flex-col max-w-[1596px] w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Client block — above the card */}
-            {artwork.clientName && artwork.clientAvatar && (
-              <div className="flex items-start gap-[27px] mb-[24px]">
-                <div
-                  className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
-                  style={artwork.clientAvatarBg ? { backgroundColor: artwork.clientAvatarBg } : undefined}
-                >
-                  <Image
-                    src={artwork.clientAvatar}
-                    alt={artwork.clientName}
-                    fill
-                    className="object-cover"
-                    sizes="80px"
-                  />
-                </div>
-                <div className="pt-[8px]">
-                  <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
-                    {artwork.clientName}
-                  </h3>
-                  {(artwork.client || artwork.clientRole) && (
-                    <div className="mt-[4px]">
-                      {artwork.client && (
-                        <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px] uppercase">
-                          {artwork.client}
-                        </p>
-                      )}
-                      {artwork.clientRole && (
-                        <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px]">
-                          {artwork.clientRole}
-                        </p>
+            {/* Client block + Versions — above the card */}
+            {(artwork.clientName && artwork.clientAvatar || artwork.sketch) && (
+              <div className="flex items-start bg-white px-[67px] py-[40px] shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]">
+                {artwork.clientName && artwork.clientAvatar && (
+                  <div className="flex items-start gap-[27px]">
+                    <div
+                      className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
+                      style={artwork.clientAvatarBg ? { backgroundColor: artwork.clientAvatarBg } : undefined}
+                    >
+                      <Image
+                        src={artwork.clientAvatar}
+                        alt={artwork.clientName}
+                        fill
+                        className="object-cover"
+                        sizes="80px"
+                      />
+                    </div>
+                    <div className="pt-[8px]">
+                      <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
+                        {artwork.clientName}
+                      </h3>
+                      {(artwork.client || artwork.clientRole) && (
+                        <div className="mt-[4px]">
+                          {artwork.client && (
+                            <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px] uppercase">
+                              {artwork.client}
+                            </p>
+                          )}
+                          {artwork.clientRole && (
+                            <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px]">
+                              {artwork.clientRole}
+                            </p>
+                          )}
+                          {artwork.subscribers && (
+                            <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px] mt-[4px]">
+                              {artwork.subscribers} subs
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-                {artwork.clientSocials && (
-                  <div className="flex flex-col items-center gap-[10px] shrink-0 ml-[27px]">
-                    {artwork.clientSocials.map((social, i) => (
-                      <a
-                        key={i}
-                        href={social.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-[20px] h-[20px] hover:brightness-[0.667] transition-[filter]"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={`/images/social/${social.icon}.svg`}
-                          alt={social.icon}
-                          className="w-full h-full object-contain"
-                        />
-                      </a>
-                    ))}
+                    {artwork.clientSocials && (
+                      <div className="flex flex-col items-center gap-[10px] shrink-0 ml-[27px]">
+                        {artwork.clientSocials.map((social, i) => (
+                          <a
+                            key={i}
+                            href={social.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-[20px] h-[20px] hover:brightness-[0.667] transition-[filter]"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`/images/social/${social.icon}.svg`}
+                              alt={social.icon}
+                              className="w-full h-full object-contain"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Versions — far right of client row */}
+                {artwork.sketch && (
+                  <div className="ml-auto shrink-0 flex flex-col items-end">
+                    <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] leading-[20px]">
+                      VERSIONS
+                    </h3>
+                    <div className="flex items-center gap-[12px] mt-[16px]">
+                      {(["final", "sketch"] as const).map((mode, i) => (
+                        <span key={mode} className="flex items-center gap-[12px]">
+                          {i > 0 && <span className="w-px h-[1em] bg-[#c0c0c0]" />}
+                          <button
+                            onClick={() => setViewMode(mode)}
+                            className={`text-[12px] font-bold tracking-[2px] uppercase transition-colors ${
+                              viewMode === mode ? "text-[#808080]" : "text-[#c0c0c0] hover:text-[#808080]"
+                            }`}
+                          >
+                            {mode}
+                          </button>
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -219,7 +274,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                 style={{ aspectRatio: imgRatio ?? 6 }}
               >
                 <Image
-                  src={artwork.image}
+                  src={displayImage}
                   alt={artwork.title[locale]}
                   fill
                   className="object-cover"
@@ -347,7 +402,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                   )}
                 </div>
 
-                {/* Right column: review */}
+                {/* Review */}
                 {artwork.review && (
                   <div className="max-w-[350px]">
                     <h3 className="text-[14px] font-bold tracking-[3.2px] text-[#808080] leading-[20px]">
@@ -356,6 +411,65 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                     <p className="mt-[16px] text-[14px] font-medium leading-[20px] text-[#787878]">
                       {artwork.review[locale]}
                     </p>
+                  </div>
+                )}
+
+                {/* Coworkers (YouTube layout) */}
+                {artwork.coworkers && artwork.coworkers.length > 0 && (
+                  <div>
+                    <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] leading-[20px]">
+                      COWORKERS
+                    </h3>
+                    <div className="flex flex-col mt-[16px]">
+                      {artwork.coworkers.map((cw, i) => {
+                        const fresh = coworkerList.find((c) => (cw.id && c.id === cw.id) || c.name === cw.name);
+                        const data = fresh ?? cw;
+                        const socials = (fresh?.socials ?? cw.socials ?? []).filter((s) => s.url);
+                        return (
+                        <div key={i}>
+                          {i > 0 && <div className="h-px bg-[#f0f0f0] my-[12px]" />}
+                          <div className="flex items-center gap-[12px]">
+                          <div className="relative w-[36px] h-[36px] rounded-full overflow-hidden shrink-0 bg-[#f0f0f0] flex items-center justify-center">
+                            {data.avatar ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={data.avatar} alt={data.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-[13px] font-bold text-[#c0c0c0]">
+                                {data.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-bold tracking-[1.8px] text-[#808080] uppercase leading-[16px]">
+                              {data.name}
+                            </p>
+                            {data.role && (
+                              <p className="text-[11px] font-medium tracking-[1.5px] text-[#c0c0c0] leading-[14px]">
+                                {data.role}
+                              </p>
+                            )}
+                          </div>
+                          {socials.length > 0 && (
+                            <div className="flex gap-[8px] shrink-0">
+                              {socials.map((s, j) => (
+                                <a
+                                  key={j}
+                                  href={s.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block w-[16px] h-[16px] hover:brightness-[0.667] transition-[filter]"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={`/images/social/${s.icon}.svg`} alt={s.icon} className="w-full h-full object-contain" />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                          </div>
+                        </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -378,7 +492,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
               style={{ width: imgRatio ? `min(calc(${imgRatio} * (50vh + 360px)), calc(100vw - 104px - 455px))` : "58.4%" }}
             >
               <Image
-                src={artwork.image}
+                src={displayImage}
                 alt={artwork.title[locale]}
                 fill
                 className="object-contain"
@@ -521,7 +635,90 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                     </p>
                   </div>
                 )}
+
+                {/* Coworkers */}
+                {artwork.coworkers && artwork.coworkers.length > 0 && (
+                  <div className="mt-[40px]">
+                    <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] leading-[20px]">
+                      COWORKERS
+                    </h3>
+                    <div className="flex flex-col mt-[16px]">
+                      {artwork.coworkers.map((cw, i) => {
+                        const fresh = coworkerList.find((c) => (cw.id && c.id === cw.id) || c.name === cw.name);
+                        const data = fresh ?? cw;
+                        const socials = (fresh?.socials ?? cw.socials ?? []).filter((s) => s.url);
+                        return (
+                        <div key={i}>
+                          {i > 0 && <div className="h-px bg-[#f0f0f0] my-[12px]" />}
+                          <div className="flex items-center gap-[12px]">
+                          <div className="relative w-[36px] h-[36px] rounded-full overflow-hidden shrink-0 bg-[#f0f0f0] flex items-center justify-center">
+                            {data.avatar ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={data.avatar} alt={data.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-[13px] font-bold text-[#c0c0c0]">
+                                {data.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-bold tracking-[1.8px] text-[#808080] uppercase leading-[16px]">
+                              {data.name}
+                            </p>
+                            {data.role && (
+                              <p className="text-[11px] font-medium tracking-[1.5px] text-[#c0c0c0] leading-[14px]">
+                                {data.role}
+                              </p>
+                            )}
+                          </div>
+                          {socials.length > 0 && (
+                            <div className="flex gap-[8px] shrink-0">
+                              {socials.map((s, j) => (
+                                <a
+                                  key={j}
+                                  href={s.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block w-[16px] h-[16px] hover:brightness-[0.667] transition-[filter]"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={`/images/social/${s.icon}.svg`} alt={s.icon} className="w-full h-full object-contain" />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                          </div>
+                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Versions toggle (if sketch exists) */}
+              {artwork.sketch && (
+                <div className="mt-[40px]">
+                  <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] leading-[20px]">
+                    VERSIONS
+                  </h3>
+                  <div className="flex items-center gap-[12px] mt-[16px]">
+                    {(["final", "sketch"] as const).map((mode, i) => (
+                      <span key={mode} className="flex items-center gap-[12px]">
+                        {i > 0 && <span className="w-px h-[1em] bg-[#c0c0c0]" />}
+                        <button
+                          onClick={() => setViewMode(mode)}
+                          className={`text-[12px] font-bold tracking-[2px] uppercase transition-colors ${
+                            viewMode === mode ? "text-[#808080]" : "text-[#c0c0c0] hover:text-[#808080]"
+                          }`}
+                        >
+                          {mode}
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Bottom — workspaces/tools */}
               {artwork.tools && (
@@ -594,7 +791,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
             onClick={() => setFullscreen(false)}
           >
             <Image
-              src={artwork.image}
+              src={displayImage}
               alt={artwork.title[locale]}
               fill
               className="object-contain p-[32px]"

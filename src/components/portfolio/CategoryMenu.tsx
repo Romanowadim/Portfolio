@@ -79,11 +79,11 @@ function ArtworkCard({
           </span>
         )}
         {artwork.subscribers !== undefined && (
-          <div className="flex items-center gap-[6px] mt-[8px]">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className="flex items-center gap-[9px] mt-[8px]">
+            <svg width="30" height="30" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path fillRule="evenodd" clipRule="evenodd" d="M19.8 5.97251C19.8 5.97251 19.6044 4.58454 19.005 3.97344C18.2444 3.17094 17.3919 3.16719 17.0012 3.12063C14.2025 2.91673 10.0044 2.91673 10.0044 2.91673H9.99563C9.99563 2.91673 5.7975 2.91673 2.99875 3.12063C2.6075 3.16719 1.75563 3.17094 0.994375 3.97344C0.395 4.58469 0.2 5.97251 0.2 5.97251C0.2 5.97251 0 7.60282 0 9.23235V10.7606C0 12.3908 0.2 14.0205 0.2 14.0205C0.2 14.0205 0.395 15.4084 0.994375 16.0195C1.75563 16.822 2.755 16.7969 3.2 16.8806C4.8 17.0355 10 17.0833 10 17.0833C10 17.0833 14.2025 17.077 17.0012 16.8731C17.3919 16.8259 18.2444 16.8222 19.005 16.0197C19.6044 15.4084 19.8 14.0206 19.8 14.0206C19.8 14.0206 20 12.3909 20 10.7606V9.23235C20 7.60282 19.8 5.97251 19.8 5.97251ZM7.935 12.6125L7.93437 6.95329L13.3381 9.79266L7.935 12.6125Z" fill="#7f7f7f"/>
             </svg>
-            <span className="text-[12px] font-bold tracking-[2.4px] text-[#7f7f7f]">
+            <span className="text-[18px] font-bold tracking-[3.6px] text-[#7f7f7f]">
               {artwork.subscribers}
             </span>
           </div>
@@ -142,6 +142,12 @@ export default function CategoryMenu() {
   const [openInstant, setOpenInstant] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addInitialImageUrl, setAddInitialImageUrl] = useState<string | undefined>();
+
+  const openAddModal = (imageUrl?: string) => {
+    setAddInitialImageUrl(imageUrl);
+    setShowAddModal(true);
+  };
   const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
   const [dynamicArtworks, setDynamicArtworks] = useState<Artwork[]>([]);
   const [artworkOrder, setArtworkOrder] = useState<Record<string, string[]>>({});
@@ -173,9 +179,9 @@ export default function CategoryMenu() {
       setOpenInstant(true);
       setActiveGrid({ category: found.category, subcategory: found.subcategory });
       setSelectedArtwork(found);
-    } else {
-      setPendingArtworkId(id);
     }
+    // Always set pendingArtworkId so dynamic version (with extra fields) upgrades the modal
+    setPendingArtworkId(id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset instant flag after modal has mounted
@@ -190,8 +196,8 @@ export default function CategoryMenu() {
     if (found) {
       setActiveGrid({ category: found.category, subcategory: found.subcategory });
       setSelectedArtwork(found);
-      setPendingArtworkId(null);
     }
+    setPendingArtworkId(null);
   }, [dynamicArtworks, pendingArtworkId]);
 
   const handleSelectArtwork = (artwork: Artwork | null) => {
@@ -312,7 +318,11 @@ export default function CategoryMenu() {
   };
 
   const handleArtworkUpdated = (artwork: Artwork) => {
-    setDynamicArtworks((prev) => prev.map((a) => (a.id === artwork.id ? artwork : a)));
+    setDynamicArtworks((prev) => {
+      const exists = prev.some((a) => a.id === artwork.id);
+      if (!exists) return [...prev, artwork];
+      return prev.map((a) => (a.id === artwork.id ? artwork : a));
+    });
   };
 
   const handleArtworkDeleted = (id: string) => {
@@ -456,7 +466,8 @@ export default function CategoryMenu() {
                     ))}
                     <AddArtworkTile
                       index={mergedArtworks.length}
-                      onClick={() => setShowAddModal(true)}
+                      onClick={() => openAddModal()}
+                      onDropImage={(url) => openAddModal(url)}
                     />
                   </div>
                 </SortableContext>
@@ -503,6 +514,7 @@ export default function CategoryMenu() {
           <ArtworkFormModal
             category={activeGrid.category}
             subcategory={activeGrid.subcategory}
+            initialImageUrl={addInitialImageUrl}
             onClose={() => setShowAddModal(false)}
             onSaved={handleArtworkAdded}
           />
