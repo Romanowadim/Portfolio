@@ -23,15 +23,21 @@ export default function HeroImage({ isFadingOut }: { isFadingOut: boolean }) {
   const isAbout = pathname === "/about";
   const isOrder = pathname === "/order";
 
+  // Synchronously check if URL has ?artwork= — computed before Framer Motion reads `initial`.
+  // When the modal closes, the URL is cleaned and React re-renders, so skipEntry becomes false
+  // and the hero image fades in normally.
+  const skipEntry = typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("artwork");
+
   const variant = isAbout ? "about" : isOrder ? "order" : "home";
   // Keep "about" position during fade-out so it doesn't slide to "home"
   const positionVariant = isFadingOut ? "about" : variant;
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 40, ...variants[variant] }}
+      initial={{ opacity: 0, x: skipEntry ? 0 : 40, ...variants[variant] }}
       animate={{
-        opacity: isFadingOut ? 0 : 1,
+        opacity: isFadingOut || skipEntry ? 0 : 1,
         x: 0,
         ...variants[positionVariant],
       }}

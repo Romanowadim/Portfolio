@@ -5,7 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { usePathname } from "@/i18n/navigation";
 import WhitePanel from "@/components/layout/WhitePanel";
-import HeroImage from "@/components/layout/HeroImage";
+import dynamic from "next/dynamic";
+const HeroImage = dynamic(() => import("@/components/layout/HeroImage"), { ssr: false });
 import ArtworkLabel from "@/components/layout/ArtworkLabel";
 import PageTransition from "@/components/layout/PageTransition";
 import SocialLinks from "@/components/layout/SocialLinks";
@@ -26,6 +27,7 @@ export default function MainContent({
   const isAbout = pathname === "/about";
   const isHome = pathname === "/";
   const isPortfolio = pathname.startsWith("/portfolio");
+  const isCabinet = pathname === "/cabinet";
   const [showFullWidth, setShowFullWidth] = useState(isFullWidth);
   const [isOrderLayout, setIsOrderLayout] = useState(isOrder);
   const prevPathnameRef = useRef(pathname);
@@ -91,12 +93,12 @@ export default function MainContent({
               <PageTransition>{children}</PageTransition>
             </div>
           </main>
-          <HeroImage isFadingOut={isFadingOut} />
+          {!isCabinet && <HeroImage isFadingOut={isFadingOut} />}
         </div>
       )}
 
       {/* ArtworkLabel — always mounted to avoid language switcher blinking on transitions */}
-      <ArtworkLabel hideInfo={isFullWidth} fadeInfo={isFadingOut} />
+      <ArtworkLabel hideInfo={isFullWidth || isCabinet} fadeInfo={isFadingOut} />
 
       {/* Shared hero name — persists across Home/Order without re-animating */}
       <AnimatePresence>
@@ -125,6 +127,7 @@ export default function MainContent({
         {showSocial && (
           <motion.div
             key="social-links"
+            data-artwork-hide
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

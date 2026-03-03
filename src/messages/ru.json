@@ -69,6 +69,17 @@
     "subtitle": "Этот раздел находится в разработке"
   },
   "admin": {
+    "cabinet": "Cabinet",
+    "statistic": "Statistic",
+    "views": "просм.",
+    "sortByDate": "По дате",
+    "sortByPopularity": "По популярности",
+    "sortByCategory": "По разделам",
+    "categoryPersonal": "Личное",
+    "categoryOrders": "Заказы",
+    "categoryYoutube": "YouTube",
+    "categoryGamedev": "Геймдев",
+    "categoryOther": "Другое",
     "login": "ВХОД АДМИНИСТРАТОРА",
     "password": "Пароль",
     "wrongPassword": "Неверный пароль",

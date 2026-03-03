@@ -8,7 +8,8 @@ export default function WhitePanel() {
   const isAbout = pathname === "/about";
   const isOrder = pathname === "/order";
   const isPortfolio = pathname === "/portfolio";
-  const showPanel = isAbout || isOrder || isPortfolio;
+  const isCabinet = pathname === "/cabinet";
+  const showPanel = isAbout || isOrder || isPortfolio || isCabinet;
 
   return (
     <AnimatePresence>

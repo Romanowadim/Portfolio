@@ -2,10 +2,23 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/admin";
 import { readDynamicArtworks, writeDynamicArtworks } from "@/lib/blob";
+import { readDeletedIds, addDeletedId } from "@/lib/deleted";
 import type { Artwork } from "@/data/artworks";
 
 export async function GET() {
   const artworks = await readDynamicArtworks();
+
+  // One-time migration: backfill createdAt for existing entries that lack it
+  const needsMigration = artworks.some((a) => !a.createdAt);
+  if (needsMigration) {
+    const now = new Date().toISOString();
+    const migrated = artworks.map((a) =>
+      a.createdAt ? a : { ...a, createdAt: now }
+    );
+    await writeDynamicArtworks(migrated);
+    return NextResponse.json(migrated);
+  }
+
   return NextResponse.json(artworks);
 }
 
@@ -23,10 +36,11 @@ export async function POST(req: Request) {
 
   try {
     const artwork: Artwork = await req.json();
+    const withDate: Artwork = { ...artwork, createdAt: new Date().toISOString() };
     const existing = await readDynamicArtworks();
-    existing.push(artwork);
+    existing.push(withDate);
     await writeDynamicArtworks(existing);
-    return NextResponse.json({ ok: true, artwork });
+    return NextResponse.json({ ok: true, artwork: withDate });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to save artwork";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -43,9 +57,10 @@ export async function PUT(req: Request) {
     const existing = await readDynamicArtworks();
     const idx = existing.findIndex((a) => a.id === artwork.id);
     if (idx === -1) {
-      existing.push(artwork);
+      existing.push({ ...artwork, createdAt: artwork.createdAt ?? new Date().toISOString() });
     } else {
-      existing[idx] = artwork;
+      // Preserve original createdAt on update
+      existing[idx] = { ...artwork, createdAt: existing[idx].createdAt ?? artwork.createdAt };
     }
     await writeDynamicArtworks(existing);
     return NextResponse.json({ ok: true, artwork });
@@ -64,10 +79,13 @@ export async function DELETE(req: Request) {
     const { id } = await req.json();
     const existing = await readDynamicArtworks();
     const filtered = existing.filter((a) => a.id !== id);
-    if (filtered.length === existing.length) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (filtered.length < existing.length) {
+      // Dynamic artwork — remove from list
+      await writeDynamicArtworks(filtered);
+    } else {
+      // Static artwork — record as deleted
+      await addDeletedId(id);
     }
-    await writeDynamicArtworks(filtered);
     return NextResponse.json({ ok: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to delete artwork";

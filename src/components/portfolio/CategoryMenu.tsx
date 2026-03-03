@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { getArtworksByCategory, Artwork } from "@/data/artworks";
+import { getArtworksByCategory, artworks as staticArtworks, Artwork } from "@/data/artworks";
 import ArtworkModal from "@/components/portfolio/ArtworkModal";
 import { usePortfolioPreview } from "@/components/portfolio/PortfolioPreviewContext";
 import { useAdmin } from "@/components/admin/AdminProvider";
@@ -138,13 +138,16 @@ export default function CategoryMenu() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [activeGrid, setActiveGrid] = useState<{ category: string; subcategory?: string } | null>(null);
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
+  const [pendingArtworkId, setPendingArtworkId] = useState<string | null>(null);
+  const [openInstant, setOpenInstant] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
   const [dynamicArtworks, setDynamicArtworks] = useState<Artwork[]>([]);
   const [artworkOrder, setArtworkOrder] = useState<Record<string, string[]>>({});
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
 
-  // Fetch dynamic artworks + order
+  // Fetch dynamic artworks + order + deleted IDs
   useEffect(() => {
     fetch("/api/artworks")
       .then((r) => r.json())
@@ -154,7 +157,57 @@ export default function CategoryMenu() {
       .then((r) => r.json())
       .then((data: Record<string, string[]>) => setArtworkOrder(data))
       .catch(() => {});
+    fetch("/api/deleted-artworks")
+      .then((r) => r.json())
+      .then((data: string[]) => setDeletedIds(new Set(data)))
+      .catch(() => {});
   }, []);
+
+  // URL sync: open artwork from ?artwork=id on mount
+  // useLayoutEffect fires before browser paint → no hero image flash
+  useLayoutEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("artwork");
+    if (!id) return;
+    const found = staticArtworks.find((a) => a.id === id);
+    if (found) {
+      setOpenInstant(true);
+      setActiveGrid({ category: found.category, subcategory: found.subcategory });
+      setSelectedArtwork(found);
+    } else {
+      setPendingArtworkId(id);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset instant flag after modal has mounted
+  useEffect(() => {
+    if (openInstant) setOpenInstant(false);
+  }, [openInstant]);
+
+  // Resolve pending artwork once dynamic artworks load
+  useEffect(() => {
+    if (!pendingArtworkId || dynamicArtworks.length === 0) return;
+    const found = dynamicArtworks.find((a) => a.id === pendingArtworkId);
+    if (found) {
+      setActiveGrid({ category: found.category, subcategory: found.subcategory });
+      setSelectedArtwork(found);
+      setPendingArtworkId(null);
+    }
+  }, [dynamicArtworks, pendingArtworkId]);
+
+  const handleSelectArtwork = (artwork: Artwork | null) => {
+    setSelectedArtwork(artwork);
+    if (artwork) {
+      window.history.replaceState(null, "", "?artwork=" + artwork.id);
+      fetch("/api/stats/view", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artworkId: artwork.id }),
+      }).catch(() => {});
+    } else {
+      window.history.replaceState(null, "", window.location.pathname);
+      document.documentElement.removeAttribute("data-artwork-open");
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -170,15 +223,17 @@ export default function CategoryMenu() {
   const mergedArtworks = (() => {
     if (!activeGrid) return [];
     const staticOnes = getArtworksByCategory(activeGrid.category, activeGrid.subcategory);
-    const dynamicOnes = dynamicArtworks.filter((a) => {
+    const idMap = new Map<string, Artwork>();
+    for (const a of staticOnes) idMap.set(a.id, a);
+    // All dynamic artworks override static (category may have changed)
+    for (const a of dynamicArtworks) idMap.set(a.id, a);
+    // Filter after merge so category changes and deletions are reflected correctly
+    const unsorted = Array.from(idMap.values()).filter((a) => {
+      if (deletedIds.has(a.id)) return false;
       if (a.category !== activeGrid.category) return false;
       if (activeGrid.subcategory && a.subcategory !== activeGrid.subcategory) return false;
       return true;
     });
-    const idMap = new Map<string, Artwork>();
-    for (const a of staticOnes) idMap.set(a.id, a);
-    for (const a of dynamicOnes) idMap.set(a.id, a);
-    const unsorted = Array.from(idMap.values());
 
     const orderKey = activeGrid.subcategory
       ? `${activeGrid.category}/${activeGrid.subcategory}`
@@ -395,7 +450,7 @@ export default function CategoryMenu() {
                           artwork={artwork}
                           index={i}
                           locale={locale}
-                          onClick={() => setSelectedArtwork(artwork)}
+                          onClick={() => handleSelectArtwork(artwork)}
                         />
                       </SortableArtworkCard>
                     ))}
@@ -414,7 +469,7 @@ export default function CategoryMenu() {
                     artwork={artwork}
                     index={i}
                     locale={locale}
-                    onClick={() => setSelectedArtwork(artwork)}
+                    onClick={() => handleSelectArtwork(artwork)}
                   />
                 ))}
               </div>
@@ -423,21 +478,25 @@ export default function CategoryMenu() {
         )}
       </AnimatePresence>
 
-      {selectedArtwork && (() => {
-        const idx = mergedArtworks.findIndex((a) => a.id === selectedArtwork.id);
-        return (
-          <ArtworkModal
-            artwork={selectedArtwork}
-            onClose={() => setSelectedArtwork(null)}
-            onPrev={idx > 0 ? () => setSelectedArtwork(mergedArtworks[idx - 1]) : undefined}
-            onNext={idx < mergedArtworks.length - 1 ? () => setSelectedArtwork(mergedArtworks[idx + 1]) : undefined}
-            onEdit={() => {
-              setEditingArtwork(selectedArtwork);
-              setSelectedArtwork(null);
-            }}
-          />
-        );
-      })()}
+      <AnimatePresence>
+        {selectedArtwork && (() => {
+          const idx = mergedArtworks.findIndex((a) => a.id === selectedArtwork.id);
+          return (
+            <ArtworkModal
+              key="artwork-modal"
+              artwork={selectedArtwork}
+              instant={openInstant}
+              onClose={() => handleSelectArtwork(null)}
+              onPrev={idx > 0 ? () => handleSelectArtwork(mergedArtworks[idx - 1]) : undefined}
+              onNext={idx < mergedArtworks.length - 1 ? () => handleSelectArtwork(mergedArtworks[idx + 1]) : undefined}
+              onEdit={() => {
+                setEditingArtwork(selectedArtwork);
+                handleSelectArtwork(null);
+              }}
+            />
+          );
+        })()}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showAddModal && activeGrid && (

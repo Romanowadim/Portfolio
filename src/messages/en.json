@@ -69,6 +69,17 @@
     "subtitle": "This section is under development"
   },
   "admin": {
+    "cabinet": "Cabinet",
+    "statistic": "Statistic",
+    "views": "views",
+    "sortByDate": "By date",
+    "sortByPopularity": "By popularity",
+    "sortByCategory": "By category",
+    "categoryPersonal": "Personal",
+    "categoryOrders": "Orders",
+    "categoryYoutube": "YouTube",
+    "categoryGamedev": "Gamedev",
+    "categoryOther": "Other",
     "login": "ADMIN LOGIN",
     "password": "Password",
     "wrongPassword": "Wrong password",

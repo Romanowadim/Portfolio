@@ -18,6 +18,14 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Hide UI elements before React hydration when ?artwork= is in URL.
+   !important is required to override Framer Motion inline styles. */
+[data-artwork-open] header,
+[data-artwork-open] [data-artwork-hide] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 body {
   background-color: var(--color-bg);
   color: var(--color-text);

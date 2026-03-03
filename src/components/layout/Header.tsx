@@ -55,12 +55,25 @@ export default function Header() {
             );
           })}
           {isAdmin && (
-            <button
-              onClick={logout}
-              className="text-[14px] tracking-wide text-text-light hover:text-text-muted transition-colors"
-            >
-              {tAdmin("logout")}
-            </button>
+            <>
+              <span className="w-px h-[1em] bg-text-light/50 self-center" />
+              <Link
+                href="/cabinet"
+                className={`text-[14px] tracking-wide transition-colors ${
+                  pathname === "/cabinet"
+                    ? "text-text-muted"
+                    : "text-text-light hover:text-text-muted"
+                }`}
+              >
+                {tAdmin("cabinet")}
+              </Link>
+              <button
+                onClick={logout}
+                className="text-[14px] tracking-wide text-text-light hover:text-text-muted transition-colors"
+              >
+                {tAdmin("logout")}
+              </button>
+            </>
           )}
         </nav>
 

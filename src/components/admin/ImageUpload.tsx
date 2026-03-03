@@ -107,7 +107,7 @@ export default function ImageUpload({ onUploaded, compact, label }: Props) {
         {uploading ? (
           <span className="text-[12px] text-[#c0c0c0] animate-pulse">...</span>
         ) : uploadError ? (
-          <span className="text-[11px] text-red-400 px-2 text-center">{uploadError}</span>
+          <span className="text-[12px] text-red-400 px-2 text-center">{uploadError}</span>
         ) : (
           <span className="text-[24px] text-[#c0c0c0]">+</span>
         )}

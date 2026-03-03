@@ -20,9 +20,12 @@ export type Artwork = {
   subscribers?: string;
   review?: { ru: string; en: string };
   clientSocials?: { icon: string; url: string }[];
+  createdAt?: string; // ISO date string, set when artwork is first saved via admin
 };
 
-export const artworks: Artwork[] = [
+const STATIC_CREATED_AT = "2026-03-03T00:00:00.000Z";
+
+export const artworks: Artwork[] = ([
   // Personal → CG
   {
     id: "cg-1",
@@ -1012,7 +1015,7 @@ export const artworks: Artwork[] = [
       en: "I have ten years experience in working as graphic designer. I studied in interior design from the Nizhny Novgorod State University of Architecture and Civil Engineering. I have experiences in cartoon animation and gamedev industry. I have good communication skills and i very responsible!",
     },
   },
-];
+] as Artwork[]).map((a) => ({ ...a, createdAt: a.createdAt ?? STATIC_CREATED_AT }));
 
 export function getArtworksByCategory(category: string, subcategory?: string) {
   return artworks.filter((a) => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
@@ -26,15 +27,27 @@ type Props = {
   onEdit?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
+  instant?: boolean;
 };
 
-export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext }: Props) {
+export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext, instant }: Props) {
   const locale = useLocale() as "ru" | "en";
   const { isAdmin } = useAdmin();
   const isOrder = artwork.category === "orders" && artwork.clientName;
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [imgRatio, setImgRatio] = useState<number | null>(null);
+  const [viewStats, setViewStats] = useState<{ total: number; recent: number } | null>(null);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((data: Record<string, { total: number; recent: number }>) => {
+        setViewStats(data[artwork.id] ?? { total: 0, recent: 0 });
+      })
+      .catch(() => {});
+  }, [isAdmin, artwork.id]);
 
   // Load image to get natural aspect ratio
   useEffect(() => {
@@ -72,9 +85,9 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext 
     };
   }, [onClose, onPrev, onNext, fullscreen]);
 
-  return (
+  const content = (
     <motion.div
-      initial={{ opacity: 0 }}
+      initial={{ opacity: instant ? 1 : 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
@@ -135,9 +148,9 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext 
         /* ─── YouTube layout: vertical card with wide image ─── */
         <div className="absolute inset-0 flex items-center justify-center p-[52px]" onClick={onClose}>
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: instant ? 1 : 0, y: instant ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
+            transition={{ duration: 0.4, delay: instant ? 0 : 0.1 }}
             className="flex flex-col max-w-[1596px] w-full"
             onClick={(e) => e.stopPropagation()}
           >
@@ -264,6 +277,21 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext 
                     </div>
                   )}
 
+                  {/* Admin: view stats (YouTube layout) */}
+                  {isAdmin && viewStats && (
+                    <div className="mt-[16px] flex items-center gap-[8px]">
+                      <svg width="14" height="14" viewBox="0 0 20 14" fill="none" className="text-[#c0c0c0]">
+                        <path d="M10 0C5.5 0 1.73 2.89 0 7c1.73 4.11 5.5 7 10 7s8.27-2.89 10-7c-1.73-4.11-5.5-7-10-7zm0 11.67A4.67 4.67 0 1 1 10 2.33a4.67 4.67 0 0 1 0 9.34zM10 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" fill="currentColor" />
+                      </svg>
+                      <span className="text-[12px] font-bold tracking-[0.5px] text-[#c0c0c0]">{viewStats.total}</span>
+                      {viewStats.recent > 0 && (
+                        <span className="text-[12px] font-bold tracking-[0.5px]" style={{ color: "#81AB41" }}>
+                          +{viewStats.recent}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {artwork.tools && (
                     <div className="mt-[24px]">
                       <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] leading-[20px]">
@@ -338,9 +366,9 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext 
         /* ─── Default layout: horizontal image + info panel ─── */
         <div className="absolute inset-0 flex items-center justify-center p-[52px]" onClick={onClose}>
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: instant ? 1 : 0, y: instant ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
+            transition={{ duration: 0.4, delay: instant ? 0 : 0.1 }}
             className="flex max-h-[calc(50vh+360px)] h-full shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]"
             onClick={(e) => e.stopPropagation()}
           >
@@ -467,6 +495,21 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext 
                   </div>
                 )}
 
+                {/* Admin: view stats */}
+                {isAdmin && viewStats && (
+                  <div className="mt-[16px] flex items-center gap-[8px]">
+                    <svg width="14" height="14" viewBox="0 0 20 14" fill="none" className="text-[#c0c0c0]">
+                      <path d="M10 0C5.5 0 1.73 2.89 0 7c1.73 4.11 5.5 7 10 7s8.27-2.89 10-7c-1.73-4.11-5.5-7-10-7zm0 11.67A4.67 4.67 0 1 1 10 2.33a4.67 4.67 0 0 1 0 9.34zM10 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" fill="currentColor" />
+                    </svg>
+                    <span className="text-[12px] font-bold tracking-[0.5px] text-[#c0c0c0]">{viewStats.total}</span>
+                    {viewStats.recent > 0 && (
+                      <span className="text-[12px] font-bold tracking-[0.5px]" style={{ color: "#81AB41" }}>
+                        +{viewStats.recent}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Client review (for orders) */}
                 {artwork.review && (
                   <div className="mt-[40px]">
@@ -563,4 +606,6 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext 
       </AnimatePresence>
     </motion.div>
   );
+
+  return createPortal(content, document.body);
 }

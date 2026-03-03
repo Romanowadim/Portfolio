@@ -61,7 +61,7 @@ export default function ToolSelector({ value, onChange }: Props) {
               />
             </button>
             {hovered === tool.key && (
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white shadow-sm px-2 py-1 text-[11px] text-[#808080] rounded z-10">
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white shadow-sm px-2 py-1 text-[12px] text-[#808080] rounded z-10">
                 {tool.label}
               </div>
             )}
