@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { usePathname } from "@/i18n/navigation";
 
@@ -19,20 +18,10 @@ const imgVariants = {
   order: { filter: "brightness(1.13) saturate(0.85)" },
 };
 
-export default function HeroImage() {
+export default function HeroImage({ isFadingOut }: { isFadingOut: boolean }) {
   const pathname = usePathname();
-  const prevPathnameRef = useRef(pathname);
-
   const isAbout = pathname === "/about";
-  const isHome = pathname === "/";
   const isOrder = pathname === "/order";
-  const wasAbout = prevPathnameRef.current === "/about";
-
-  // About → non-Home/Order: fade out in place instead of animating position
-  const isFadingOut = wasAbout && !isAbout && !isHome && !isOrder;
-
-  // Update ref in effect so strict mode double-render doesn't break detection
-  useEffect(() => { prevPathnameRef.current = pathname; }, [pathname]);
 
   const variant = isAbout ? "about" : isOrder ? "order" : "home";
   // Keep "about" position during fade-out so it doesn't slide to "home"

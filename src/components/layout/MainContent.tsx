@@ -9,6 +9,7 @@ import HeroImage from "@/components/layout/HeroImage";
 import ArtworkLabel from "@/components/layout/ArtworkLabel";
 import PageTransition from "@/components/layout/PageTransition";
 import SocialLinks from "@/components/layout/SocialLinks";
+import { PortfolioPreviewProvider } from "@/components/portfolio/PortfolioPreviewContext";
 
 export default function MainContent({
   children,
@@ -22,9 +23,14 @@ export default function MainContent({
   const showHeroName = pathname === "/" || pathname === "/order";
 
   const isOrder = pathname === "/order";
+  const isAbout = pathname === "/about";
+  const isHome = pathname === "/";
+  const isPortfolio = pathname.startsWith("/portfolio");
   const [showFullWidth, setShowFullWidth] = useState(isFullWidth);
   const [isOrderLayout, setIsOrderLayout] = useState(isOrder);
   const prevPathnameRef = useRef(pathname);
+
+  const isFadingOut = prevPathnameRef.current === "/about" && !isAbout && !isHome && !isOrder && !isPortfolio;
 
   useEffect(() => {
     const prevPathname = prevPathnameRef.current;
@@ -64,7 +70,7 @@ export default function MainContent({
   }, [pathname]);
 
   return (
-    <>
+    <PortfolioPreviewProvider>
       {showFullWidth ? (
         <div className="min-h-screen relative">
           <main className="relative w-full min-h-screen pt-[148px]">
@@ -85,10 +91,12 @@ export default function MainContent({
               <PageTransition>{children}</PageTransition>
             </div>
           </main>
-          <ArtworkLabel hideInfo={pathname.startsWith("/portfolio")} />
-          <HeroImage />
+          <HeroImage isFadingOut={isFadingOut} />
         </div>
       )}
+
+      {/* ArtworkLabel — always mounted to avoid language switcher blinking on transitions */}
+      <ArtworkLabel hideInfo={isFullWidth} fadeInfo={isFadingOut} />
 
       {/* Shared hero name — persists across Home/Order without re-animating */}
       <AnimatePresence>
@@ -131,6 +139,6 @@ export default function MainContent({
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </PortfolioPreviewProvider>
   );
 }

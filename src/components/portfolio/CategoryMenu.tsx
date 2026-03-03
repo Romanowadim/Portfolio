@@ -6,6 +6,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { getArtworksByCategory, Artwork } from "@/data/artworks";
 import ArtworkModal from "@/components/portfolio/ArtworkModal";
+import { usePortfolioPreview } from "@/components/portfolio/PortfolioPreviewContext";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import AddArtworkTile from "@/components/admin/AddArtworkTile";
 import ArtworkFormModal from "@/components/admin/ArtworkFormModal";
@@ -60,9 +61,23 @@ function ArtworkCard({
         }}
       />
       <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <span className="text-[14px] font-bold tracking-[2.8px] text-[#7f7f7f] uppercase">
-          {artwork.title[locale]}
-        </span>
+        {artwork.logo ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={artwork.logo}
+              alt={artwork.title[locale]}
+              className="w-[160px] h-auto mb-[10px]"
+            />
+            <span className="text-[14px] font-bold tracking-[2.8px] text-[#7f7f7f] uppercase">
+              {artwork.title[locale]}
+            </span>
+          </>
+        ) : (
+          <span className="text-[14px] font-bold tracking-[2.8px] text-[#7f7f7f] uppercase">
+            {artwork.title[locale]}
+          </span>
+        )}
         {artwork.subscribers !== undefined && (
           <div className="flex items-center gap-[6px] mt-[8px]">
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -119,6 +134,7 @@ export default function CategoryMenu() {
   const t = useTranslations("portfolio");
   const locale = useLocale() as "ru" | "en";
   const { isAdmin } = useAdmin();
+  const { setPreviewActive } = usePortfolioPreview();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [activeGrid, setActiveGrid] = useState<{ category: string; subcategory?: string } | null>(null);
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
@@ -145,6 +161,10 @@ export default function CategoryMenu() {
   );
 
   const showPreview = hoveredCategory && !activeGrid && !expanded;
+
+  useEffect(() => {
+    setPreviewActive(!!(showPreview || activeGrid));
+  }, [showPreview, activeGrid, setPreviewActive]);
 
   // Merge static + dynamic artworks, sorted by saved order
   const mergedArtworks = (() => {
@@ -403,16 +423,21 @@ export default function CategoryMenu() {
         )}
       </AnimatePresence>
 
-      {selectedArtwork && (
-        <ArtworkModal
-          artwork={selectedArtwork}
-          onClose={() => setSelectedArtwork(null)}
-          onEdit={() => {
-            setEditingArtwork(selectedArtwork);
-            setSelectedArtwork(null);
-          }}
-        />
-      )}
+      {selectedArtwork && (() => {
+        const idx = mergedArtworks.findIndex((a) => a.id === selectedArtwork.id);
+        return (
+          <ArtworkModal
+            artwork={selectedArtwork}
+            onClose={() => setSelectedArtwork(null)}
+            onPrev={idx > 0 ? () => setSelectedArtwork(mergedArtworks[idx - 1]) : undefined}
+            onNext={idx < mergedArtworks.length - 1 ? () => setSelectedArtwork(mergedArtworks[idx + 1]) : undefined}
+            onEdit={() => {
+              setEditingArtwork(selectedArtwork);
+              setSelectedArtwork(null);
+            }}
+          />
+        );
+      })()}
 
       <AnimatePresence>
         {showAddModal && activeGrid && (

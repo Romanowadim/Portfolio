@@ -2,8 +2,11 @@
 
 import { motion } from "framer-motion";
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
+import { usePortfolioPreview } from "@/components/portfolio/PortfolioPreviewContext";
 
-export default function ArtworkLabel({ hideInfo }: { hideInfo?: boolean }) {
+export default function ArtworkLabel({ hideInfo, fadeInfo }: { hideInfo?: boolean; fadeInfo?: boolean }) {
+  const { isPreviewActive } = usePortfolioPreview();
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -13,7 +16,11 @@ export default function ArtworkLabel({ hideInfo }: { hideInfo?: boolean }) {
     >
       <LanguageSwitcher />
       {!hideInfo && (
-        <div className="text-right">
+        <motion.div
+          className="text-right"
+          animate={{ opacity: (fadeInfo || isPreviewActive) ? 0 : 1 }}
+          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+        >
           <p className="text-[13px] leading-[17px] text-text-light tracking-wide">
             Self-Portrait
           </p>
@@ -23,7 +30,7 @@ export default function ArtworkLabel({ hideInfo }: { hideInfo?: boolean }) {
           <p className="text-[13px] leading-[15px] text-[#ddd] font-semibold">
             Procreate | Photoshop
           </p>
-        </div>
+        </motion.div>
       )}
     </motion.div>
   );

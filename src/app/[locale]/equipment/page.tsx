@@ -1,11 +1,17 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { motion } from "framer-motion";
 import { equipment } from "@/data/equipment";
 
+function localizeValue(value: string, locale: string) {
+  if (locale !== "ru") return value;
+  return value.replace(/\bGHz\b/g, "ГГц").replace(/\bGb\b/g, "Гб");
+}
+
 export default function EquipmentPage() {
   const t = useTranslations("equipment");
+  const locale = useLocale();
 
   return (
     <motion.div
@@ -73,7 +79,7 @@ export default function EquipmentPage() {
                   >
                     {t(spec.key)}
                   </span>
-                  <span>{spec.value}</span>
+                  <span>{localizeValue(spec.value, locale)}</span>
                 </div>
               ))}
             </div>

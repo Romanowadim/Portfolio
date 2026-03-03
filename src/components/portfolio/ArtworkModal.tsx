@@ -24,9 +24,11 @@ type Props = {
   artwork: Artwork;
   onClose: () => void;
   onEdit?: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
 };
 
-export default function ArtworkModal({ artwork, onClose, onEdit }: Props) {
+export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext }: Props) {
   const locale = useLocale() as "ru" | "en";
   const { isAdmin } = useAdmin();
   const isOrder = artwork.category === "orders" && artwork.clientName;
@@ -43,6 +45,11 @@ export default function ArtworkModal({ artwork, onClose, onEdit }: Props) {
     img.src = artwork.image;
   }, [artwork.image]);
 
+  // Reset fullscreen when navigating to another artwork
+  useEffect(() => {
+    setFullscreen(false);
+  }, [artwork.id]);
+
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -52,6 +59,10 @@ export default function ArtworkModal({ artwork, onClose, onEdit }: Props) {
           onClose();
         }
       }
+      if (!fullscreen) {
+        if (e.key === "ArrowLeft") onPrev?.();
+        if (e.key === "ArrowRight") onNext?.();
+      }
     };
     document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
@@ -59,7 +70,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit }: Props) {
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = "";
     };
-  }, [onClose, fullscreen]);
+  }, [onClose, onPrev, onNext, fullscreen]);
 
   return (
     <motion.div
@@ -93,6 +104,28 @@ export default function ArtworkModal({ artwork, onClose, onEdit }: Props) {
               d="M12.4365 3.32148L16.5049 7.38989L6.20657 17.6883L2.14042 13.6198L12.4365 3.32148ZM19.5921 2.34027L17.7777 0.525894C17.0765 -0.175298 15.938 -0.175298 15.2344 0.525894L13.4964 2.26388L17.5648 6.33233L19.5921 4.30507C20.136 3.76118 20.136 2.88411 19.5921 2.34027ZM0.0113215 19.3383C-0.0627191 19.6716 0.238132 19.9701 0.571391 19.8891L5.105 18.7899L1.03885 14.7215L0.0113215 19.3383Z"
               fill="currentColor"
             />
+          </svg>
+        </button>
+      )}
+
+      {/* Prev / Next navigation arrows */}
+      {onPrev && (
+        <button
+          onClick={onPrev}
+          className="absolute left-[24px] top-1/2 -translate-y-1/2 z-10 text-[#c0c0c0] hover:text-[#808080] transition-colors"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+      )}
+      {onNext && (
+        <button
+          onClick={onNext}
+          className="absolute right-[24px] top-1/2 -translate-y-1/2 z-10 text-[#c0c0c0] hover:text-[#808080] transition-colors"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
       )}

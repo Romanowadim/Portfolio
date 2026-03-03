@@ -42,6 +42,8 @@ export default function ArtworkFormModal({
   const [imageUrl, setImageUrl] = useState(editArtwork?.image || "");
   const [thumbnailUrl, setThumbnailUrl] = useState(editArtwork?.thumbnail || "");
   const [showCropper, setShowCropper] = useState(false);
+  const [logoUrl, setLogoUrl] = useState(editArtwork?.logo || "");
+  const [logoUploading, setLogoUploading] = useState(false);
   const [sketchUrl, setSketchUrl] = useState(editArtwork?.sketch || "");
 
   // Fields
@@ -90,6 +92,21 @@ export default function ArtworkFormModal({
     setShowCropper(false);
   };
 
+  const handleLogoUpload = async (file: File) => {
+    setLogoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (res.ok) {
+        const data = await res.json();
+        setLogoUrl(data.url);
+      }
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
   const addSocial = () => {
     if (socials.length >= 3) return;
     setSocials([...socials, { icon: "vk", url: "" }]);
@@ -115,6 +132,7 @@ export default function ArtworkFormModal({
       title: { ru: titleRu, en: titleEn },
       image: imageUrl,
       thumbnail: thumbnailUrl || undefined,
+      logo: logoUrl || undefined,
       sketch: sketchUrl || undefined,
       year: year || undefined,
       hours: hours || undefined,
@@ -283,6 +301,41 @@ export default function ArtworkFormModal({
                   >
                     {t("form.cropThumbnail")}
                   </button>
+                )}
+              </div>
+            )}
+
+            {/* 1c. Logo SVG (shown on hover in catalog) */}
+            {imageUrl && (
+              <div>
+                <label className={labelClass}>{t("form.logo")}</label>
+                {logoUrl ? (
+                  <div className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={logoUrl} alt="" className="h-[40px] w-auto max-w-[160px] object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => setLogoUrl("")}
+                      className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                    >
+                      {t("form.changeImage")}
+                    </button>
+                  </div>
+                ) : (
+                  <label className="inline-flex h-[30px] px-4 border border-dashed border-[#c0c0c0] items-center cursor-pointer hover:border-text-muted transition-colors">
+                    <span className="text-[12px] text-[#c0c0c0]">
+                      {logoUploading ? "..." : "+ SVG"}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".svg,image/svg+xml"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleLogoUpload(file);
+                      }}
+                    />
+                  </label>
                 )}
               </div>
             )}
