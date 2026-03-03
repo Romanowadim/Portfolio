@@ -63,6 +63,16 @@ function ArtworkCard({
         <span className="text-[14px] font-bold tracking-[2.8px] text-[#7f7f7f] uppercase">
           {artwork.title[locale]}
         </span>
+        {artwork.subscribers !== undefined && (
+          <div className="flex items-center gap-[6px] mt-[8px]">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path fillRule="evenodd" clipRule="evenodd" d="M19.8 5.97251C19.8 5.97251 19.6044 4.58454 19.005 3.97344C18.2444 3.17094 17.3919 3.16719 17.0012 3.12063C14.2025 2.91673 10.0044 2.91673 10.0044 2.91673H9.99563C9.99563 2.91673 5.7975 2.91673 2.99875 3.12063C2.6075 3.16719 1.75563 3.17094 0.994375 3.97344C0.395 4.58469 0.2 5.97251 0.2 5.97251C0.2 5.97251 0 7.60282 0 9.23235V10.7606C0 12.3908 0.2 14.0205 0.2 14.0205C0.2 14.0205 0.395 15.4084 0.994375 16.0195C1.75563 16.822 2.755 16.7969 3.2 16.8806C4.8 17.0355 10 17.0833 10 17.0833C10 17.0833 14.2025 17.077 17.0012 16.8731C17.3919 16.8259 18.2444 16.8222 19.005 16.0197C19.6044 15.4084 19.8 14.0206 19.8 14.0206C19.8 14.0206 20 12.3909 20 10.7606V9.23235C20 7.60282 19.8 5.97251 19.8 5.97251ZM7.935 12.6125L7.93437 6.95329L13.3381 9.79266L7.935 12.6125Z" fill="#7f7f7f"/>
+            </svg>
+            <span className="text-[12px] font-bold tracking-[2.4px] text-[#7f7f7f]">
+              {artwork.subscribers}
+            </span>
+          </div>
+        )}
       </div>
       {(artwork.year || artwork.tools) && (
         <div className="absolute bottom-[11%] left-0 right-0 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">

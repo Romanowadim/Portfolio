@@ -10,10 +10,13 @@ export type Artwork = {
   hours?: string;
   category: "personal" | "orders" | "youtube" | "other" | "gamedev";
   subcategory?: "cg" | "lineart";
+  objectPosition?: string;
   client?: string;
   clientName?: string;
   clientRole?: string;
   clientAvatar?: string;
+  clientAvatarBg?: string;
+  subscribers?: string;
   review?: { ru: string; en: string };
   clientSocials?: { icon: string; url: string }[];
 };
@@ -360,15 +363,149 @@ export const artworks: Artwork[] = [
   // YouTube
   {
     id: "yt-1",
-    title: { ru: "YouTube Арт 1", en: "YouTube Art 1" },
-    image: "/images/artworks/artwork-9.jpg",
+    title: { ru: "Noob Miners", en: "Noob Miners" },
+    image: "/images/artworks/yt-noobminers.png",
     category: "youtube",
+    objectPosition: "100% center",
+    subscribers: "0",
   },
   {
     id: "yt-2",
-    title: { ru: "YouTube Арт 2", en: "YouTube Art 2" },
-    image: "/images/artworks/artwork-10.jpg",
+    title: { ru: "Иллюстрация", en: "Illustration" },
+    image: "/images/artworks/yt-illustration6.png",
     category: "youtube",
+    objectPosition: "74% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-3",
+    title: { ru: "Pro Miners", en: "Pro Miners" },
+    image: "/images/artworks/yt-prominers.png",
+    category: "youtube",
+    objectPosition: "100% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-4",
+    title: { ru: "Pinata", en: "Pinata" },
+    image: "/images/artworks/yt-pinata.png",
+    category: "youtube",
+    objectPosition: "11% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-5",
+    title: { ru: "Djeremi", en: "Djeremi" },
+    image: "/images/artworks/yt-djeremi.png",
+    category: "youtube",
+    objectPosition: "33% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-6",
+    title: { ru: "Klash", en: "Klash" },
+    image: "/images/artworks/yt-klash.png",
+    category: "youtube",
+    objectPosition: "32% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-7",
+    title: { ru: "Dolphin", en: "Dolphin" },
+    image: "/images/artworks/yt-dolphin.png",
+    category: "youtube",
+    objectPosition: "35% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-8",
+    title: { ru: "Flazin YouTube шапка", en: "Flazin YouTube Header" },
+    image: "/images/artworks/yt-flazin.png",
+    year: "2021",
+    tools: "Photoshop | Procreate",
+    resolution: "1596x262",
+    hours: "~10h",
+    category: "youtube",
+    objectPosition: "17% center",
+    clientName: "Pavel Korolev",
+    client: "Flazin",
+    clientRole: "YouTuber",
+    clientAvatar: "/images/clients/flazin-avatar.png",
+    clientAvatarBg: "#ff9c9c",
+    subscribers: "0",
+    clientSocials: [
+      { icon: "vk", url: "https://vk.com/flazin" },
+      { icon: "instagram", url: "https://instagram.com/flazin" },
+      { icon: "youtube", url: "https://youtube.com/@flazin" },
+    ],
+    review: {
+      ru: "У меня десять лет опыта работы графическим дизайнером. Я изучал дизайн интерьера в Нижегородском государственном архитектурно-строительном университете. Имею опыт в мультипликации и игровой индустрии. Обладаю хорошими коммуникативными навыками и очень ответственный!",
+      en: "I have ten years experience in working as graphic designer. I studied in interior design from the Nizhny Novgorod State University of Architecture and Civil Engineering. I have experiences in cartoon animation and gamedev industry. I have good communication skills and i very responsible!",
+    },
+  },
+  {
+    id: "yt-9",
+    title: { ru: "Dipper", en: "Dipper" },
+    image: "/images/artworks/yt-dipper.png",
+    category: "youtube",
+    objectPosition: "28% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-10",
+    title: { ru: "Simon Summer Dogs", en: "Simon Summer Dogs" },
+    image: "/images/artworks/yt-simon-summer-dogs.png",
+    category: "youtube",
+    objectPosition: "28% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-11",
+    title: { ru: "Джулик", en: "Julick" },
+    image: "/images/artworks/yt-julick.png",
+    category: "youtube",
+    objectPosition: "63% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-12",
+    title: { ru: "Micy", en: "Micy" },
+    image: "/images/artworks/yt-micy.png",
+    category: "youtube",
+    objectPosition: "28% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-13",
+    title: { ru: "Simon Summer", en: "Simon Summer" },
+    image: "/images/artworks/yt-simon-summer.png",
+    category: "youtube",
+    objectPosition: "48% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-14",
+    title: { ru: "Simon Winter", en: "Simon Winter" },
+    image: "/images/artworks/yt-simon-winter.png",
+    category: "youtube",
+    objectPosition: "44% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-15",
+    title: { ru: "Rick", en: "Rick" },
+    image: "/images/artworks/yt-rick.png",
+    category: "youtube",
+    objectPosition: "21% center",
+    subscribers: "0",
+  },
+  {
+    id: "yt-16",
+    title: { ru: "Klash 2", en: "Klash 2" },
+    image: "/images/artworks/yt-klash.png",
+    category: "youtube",
+    objectPosition: "76% center",
+    subscribers: "0",
   },
 ];
 

@@ -43,9 +43,10 @@ export async function PUT(req: Request) {
     const existing = await readDynamicArtworks();
     const idx = existing.findIndex((a) => a.id === artwork.id);
     if (idx === -1) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      existing.push(artwork);
+    } else {
+      existing[idx] = artwork;
     }
-    existing[idx] = artwork;
     await writeDynamicArtworks(existing);
     return NextResponse.json({ ok: true, artwork });
   } catch (e) {

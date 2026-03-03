@@ -85,7 +85,7 @@ export default function MainContent({
               <PageTransition>{children}</PageTransition>
             </div>
           </main>
-          <ArtworkLabel />
+          <ArtworkLabel hideInfo={pathname.startsWith("/portfolio")} />
           <HeroImage />
         </div>
       )}

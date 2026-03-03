@@ -3,9 +3,11 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useLocale } from "next-intl";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Artwork } from "@/data/artworks";
+import { useAdmin } from "@/components/admin/AdminProvider";
 import ArtworkModal from "./ArtworkModal";
+import ArtworkFormModal from "@/components/admin/ArtworkFormModal";
 
 type Props = {
   artworks: Artwork[];
@@ -13,7 +15,9 @@ type Props = {
 
 export default function ArtworkGrid({ artworks }: Props) {
   const locale = useLocale() as "ru" | "en";
+  const { isAdmin } = useAdmin();
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
+  const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
 
   if (artworks.length === 0) {
     return (
@@ -55,8 +59,24 @@ export default function ArtworkGrid({ artworks }: Props) {
         <ArtworkModal
           artwork={selectedArtwork}
           onClose={() => setSelectedArtwork(null)}
+          onEdit={isAdmin ? () => {
+            setEditingArtwork(selectedArtwork);
+            setSelectedArtwork(null);
+          } : undefined}
         />
       )}
+
+      <AnimatePresence>
+        {editingArtwork && (
+          <ArtworkFormModal
+            category={editingArtwork.category}
+            subcategory={editingArtwork.subcategory}
+            artwork={editingArtwork}
+            onClose={() => setEditingArtwork(null)}
+            onSaved={() => setEditingArtwork(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
