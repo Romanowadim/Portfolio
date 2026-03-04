@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 
 function getExperience(since: number): string {
   const years = new Date().getFullYear() - since;
+  if (years === 0) return "Less than 1 year";
+  if (years === 1) return "1 year of experience";
   return `${years} years of experience`;
 }
 
@@ -15,6 +17,13 @@ const programs = [
   { name: "Animate", fullName: "Adobe Animate", since: 2013, icon: "/images/programs/animate.svg", className: "w-[35px] h-[35px]", gap: "" },
   { name: "Figma", fullName: "Figma", since: 2017, icon: "/images/programs/figma.svg", className: "w-[35px] h-[35px]", gap: "" },
   { name: "Procreate", fullName: "Procreate", since: 2015, icon: "/images/programs/procreate.png", className: "w-[35px] h-[35px]", gap: "" },
+  { name: "Krita", fullName: "Krita", since: 2024, icon: "/images/programs/krita.svg", className: "w-[35px] h-[35px]", gap: "" },
+];
+
+const aiSoftware = [
+  { name: "Midjourney", fullName: "Midjourney", since: 2022, icon: "/images/programs/midjourney.svg", className: "w-[35px] h-[35px]", gap: "", invert: true },
+  { name: "ChatGPT", fullName: "ChatGPT", since: 2024, icon: "/images/programs/chatgpt.svg", className: "w-[35px] h-[35px]", gap: "", invert: true },
+  { name: "Claude", fullName: "Claude", since: 2026, icon: "/images/programs/claude-ai.svg", className: "w-[35px] h-[35px]", gap: "", invert: true },
 ];
 
 export default function AboutPage() {
@@ -98,6 +107,60 @@ export default function AboutPage() {
                             src={p.icon}
                             alt=""
                             className={`${p.className} object-contain shrink-0`}
+                          />
+                          <span className="text-[14px] text-[#7f7f7f] leading-[20px] font-semibold">
+                            {p.fullName}
+                          </span>
+                        </div>
+                        <div className="h-px bg-[#e8e8e8] mx-[11px]" />
+                        <p className="text-[12px] text-[#7f7f7f] leading-[15.5px] text-center py-[10px]">
+                          {getExperience(p.since)}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
+          </motion.section>
+
+          {/* AI SOFTWARE — enters after programs (0.7s), exits first (0s delay) */}
+          <motion.section {...sectionTransition(0.7, 0)}>
+            <h2 className="text-[14px] font-bold tracking-[2.8px] text-text-muted uppercase mb-4">
+              {t("aiSoftware")}
+            </h2>
+            <div className="flex items-center gap-[35px]">
+              {aiSoftware.map((p) => (
+                <div
+                  key={p.name}
+                  className={`relative ${p.gap}`}
+                  onMouseEnter={() => setHoveredProgram(p.name)}
+                  onMouseLeave={() => setHoveredProgram(null)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.icon}
+                    alt={p.name}
+                    className={`${p.className} object-contain cursor-pointer`}
+                    style={p.invert ? { filter: "invert(1)" } : undefined}
+                  />
+                  <AnimatePresence>
+                    {hoveredProgram === p.name && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute z-50 w-[209px] rounded-[13px] bg-white shadow-[0px_1px_10px_0px_rgba(0,0,0,0.1)] pointer-events-none"
+                        style={{ left: -13, top: -14 }}
+                      >
+                        <div className="flex items-center gap-3 px-[13px] pt-[14px] pb-[13px]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={p.icon}
+                            alt=""
+                            className={`${p.className} object-contain shrink-0`}
+                            style={p.invert ? { filter: "invert(1)" } : undefined}
                           />
                           <span className="text-[14px] text-[#7f7f7f] leading-[20px] font-semibold">
                             {p.fullName}

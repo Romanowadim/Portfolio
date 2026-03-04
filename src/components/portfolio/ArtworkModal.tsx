@@ -9,16 +9,22 @@ import { Artwork } from "@/data/artworks";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import type { Coworker } from "@/lib/blob";
 
-const toolInfo: Record<string, { fullName: string; since: number }> = {
-  photoshop: { fullName: "Adobe Photoshop", since: 2009 },
+const toolInfo: Record<string, { fullName: string; since: number; file?: string; ext?: string; invert?: boolean }> = {
+  photoshop:   { fullName: "Adobe Photoshop",  since: 2009 },
   illustrator: { fullName: "Adobe Illustrator", since: 2017 },
-  animate: { fullName: "Adobe Animate", since: 2013 },
-  figma: { fullName: "Figma", since: 2017 },
-  procreate: { fullName: "Procreate", since: 2015 },
+  animate:     { fullName: "Adobe Animate",     since: 2013 },
+  figma:       { fullName: "Figma",             since: 2017 },
+  procreate:   { fullName: "Procreate",         since: 2015, ext: "png" },
+  krita:       { fullName: "Krita",             since: 2024 },
+  midjourney:  { fullName: "Midjourney",        since: 2022, invert: true },
+  chatgpt:     { fullName: "ChatGPT",           since: 2024, invert: true },
+  claude:      { fullName: "Claude",            since: 2026, file: "claude-ai", invert: true },
 };
 
 function getExperience(since: number): string {
   const years = new Date().getFullYear() - since;
+  if (years === 0) return "Less than 1 year";
+  if (years === 1) return "1 year of experience";
   return `${years} years of experience`;
 }
 
@@ -34,7 +40,7 @@ type Props = {
 export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext, instant }: Props) {
   const locale = useLocale() as "ru" | "en";
   const { isAdmin } = useAdmin();
-  const isOrder = artwork.category === "orders" && artwork.clientName;
+  const isOrder = !!artwork.clientName;
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [imgRatio, setImgRatio] = useState<number | null>(null);
@@ -177,22 +183,24 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
             onClick={(e) => e.stopPropagation()}
           >
             {/* Client block + Versions — above the card */}
-            {(artwork.clientName && artwork.clientAvatar || artwork.sketch) && (
+            {(artwork.clientName || artwork.sketch) && (
               <div className="flex items-start bg-white px-[67px] py-[40px] shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]">
-                {artwork.clientName && artwork.clientAvatar && (
+                {artwork.clientName && (
                   <div className="flex items-start gap-[27px]">
-                    <div
-                      className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
-                      style={artwork.clientAvatarBg ? { backgroundColor: artwork.clientAvatarBg } : undefined}
-                    >
-                      <Image
-                        src={artwork.clientAvatar}
-                        alt={artwork.clientName}
-                        fill
-                        className="object-cover"
-                        sizes="80px"
-                      />
-                    </div>
+                    {artwork.clientAvatar && (
+                      <div
+                        className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
+                        style={artwork.clientAvatarBg ? { backgroundColor: artwork.clientAvatarBg } : undefined}
+                      >
+                        <Image
+                          src={artwork.clientAvatar}
+                          alt={artwork.clientName}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                        />
+                      </div>
+                    )}
                     <div className="pt-[8px]">
                       <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
                         {artwork.clientName}
@@ -356,7 +364,9 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                         {artwork.tools.split(" | ").map((tool) => {
                           const key = tool.toLowerCase();
                           const info = toolInfo[key];
-                          const iconSrc = `/images/programs/${key}.${key === "procreate" ? "png" : "svg"}`;
+                          const iconFile = info?.file ?? key;
+                          const iconExt = info?.ext ?? "svg";
+                          const iconSrc = `/images/programs/${iconFile}.${iconExt}`;
                           return (
                             <div
                               key={tool}
@@ -368,7 +378,8 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                               <img
                                 src={iconSrc}
                                 alt={tool}
-                                className="object-contain cursor-pointer grayscale opacity-25 w-[35px] h-[35px]"
+                                className="object-contain cursor-pointer w-[35px] h-[35px]"
+                                style={{ filter: info?.invert ? "invert(1) grayscale(1) opacity(0.4)" : "grayscale(1) opacity(0.25)" }}
                               />
                               <AnimatePresence>
                                 {hoveredTool === tool && info && (
@@ -382,7 +393,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                                   >
                                     <div className="flex items-center gap-3 px-[13px] pt-[14px] pb-[13px]">
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={iconSrc} alt="" className="object-contain shrink-0 w-[35px] h-[35px]" />
+                                      <img src={iconSrc} alt="" className="object-contain shrink-0 w-[35px] h-[35px]" style={info?.invert ? { filter: "invert(1)" } : undefined} />
                                       <span className="text-[14px] text-[#7f7f7f] leading-[20px] font-semibold">
                                         {info.fullName}
                                       </span>
@@ -525,20 +536,22 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
               {/* Top section */}
               <div>
                 {/* Client info block (orders only) */}
-                {isOrder && artwork.clientAvatar && (
+                {isOrder && (
                   <div className="flex items-start gap-[16px] mb-[40px]">
-                    <div
-                      className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
-                      style={artwork.clientAvatarBg ? { backgroundColor: artwork.clientAvatarBg } : undefined}
-                    >
-                      <Image
-                        src={artwork.clientAvatar}
-                        alt={artwork.clientName || ""}
-                        fill
-                        className="object-cover"
-                        sizes="80px"
-                      />
-                    </div>
+                    {artwork.clientAvatar && (
+                      <div
+                        className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
+                        style={artwork.clientAvatarBg ? { backgroundColor: artwork.clientAvatarBg } : undefined}
+                      >
+                        <Image
+                          src={artwork.clientAvatar}
+                          alt={artwork.clientName || ""}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                        />
+                      </div>
+                    )}
                     <div className="pt-[8px] flex-1">
                       <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
                         {artwork.clientName}
@@ -732,7 +745,9 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                     {artwork.tools.split(" | ").map((tool) => {
                       const key = tool.toLowerCase();
                       const info = toolInfo[key];
-                      const iconSrc = `/images/programs/${key}.${key === "procreate" ? "png" : "svg"}`;
+                      const iconFile = info?.file ?? key;
+                      const iconExt = info?.ext ?? "svg";
+                      const iconSrc = `/images/programs/${iconFile}.${iconExt}`;
                       return (
                         <div
                           key={tool}
@@ -744,7 +759,8 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                           <img
                             src={iconSrc}
                             alt={tool}
-                            className={`object-contain cursor-pointer grayscale opacity-25 ${"w-[35px] h-[35px]"}`}
+                            className="object-contain cursor-pointer w-[35px] h-[35px]"
+                            style={{ filter: info?.invert ? "invert(1) grayscale(1) opacity(0.4)" : "grayscale(1) opacity(0.25)" }}
                           />
                           <AnimatePresence>
                             {hoveredTool === tool && info && (
@@ -758,7 +774,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                               >
                                 <div className="flex items-center gap-3 px-[13px] pt-[14px] pb-[13px]">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={iconSrc} alt="" className={`object-contain shrink-0 ${"w-[35px] h-[35px]"}`} />
+                                  <img src={iconSrc} alt="" className="object-contain shrink-0 w-[35px] h-[35px]" style={info?.invert ? { filter: "invert(1)" } : undefined} />
                                   <span className="text-[14px] text-[#7f7f7f] leading-[20px] font-semibold">
                                     {info.fullName}
                                   </span>

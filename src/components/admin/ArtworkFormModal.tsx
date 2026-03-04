@@ -57,9 +57,6 @@ export default function ArtworkFormModal({
       .catch(() => {});
   }, [categoriesProp]);
 
-  const currentCatData = categoriesLocal.find((c) => c.id === cat);
-  const availableSubs = currentCatData?.subcategories ?? [];
-
   // Image state
   const [imageUrl, setImageUrl] = useState(editArtwork?.image || initialImageUrl || "");
   const [thumbnailUrl, setThumbnailUrl] = useState(editArtwork?.thumbnail || "");
@@ -73,9 +70,12 @@ export default function ArtworkFormModal({
   const [titleRu, setTitleRu] = useState(editArtwork?.title.ru || "");
   const [titleEn, setTitleEn] = useState(editArtwork?.title.en || "");
   const [cat, setCat] = useState(editArtwork?.category || category);
+
+  const currentCatData = categoriesLocal.find((c) => c.id === cat);
+  const availableSubs = currentCatData?.subcategories ?? [];
   const [subcat, setSubcat] = useState(editArtwork?.subcategory || subcategory || "");
-  const [year, setYear] = useState(editArtwork?.year || "");
-  const [hours, setHours] = useState(editArtwork?.hours || "");
+  const [year, setYear] = useState(editArtwork?.year || String(new Date().getFullYear()));
+  const [hours, setHours] = useState(editArtwork?.hours?.replace(/^~/, "").replace(/h$/, "") || "");
   const [resolution, setResolution] = useState(editArtwork?.resolution || "");
   const [tools, setTools] = useState(editArtwork?.tools || "");
 
@@ -248,7 +248,7 @@ export default function ArtworkFormModal({
       logo: logoUrl || undefined,
       sketch: sketchUrl || undefined,
       year: year || undefined,
-      hours: hours || undefined,
+      hours: hours ? `~${hours}h` : undefined,
       resolution: resolution || undefined,
       tools: tools || undefined,
       category: cat,
@@ -588,37 +588,39 @@ export default function ArtworkFormModal({
               </div>
             )}
 
-            {/* 5. Year */}
-            <div>
-              <label className={labelClass}>{t("form.year")}</label>
-              <input
-                className={inputClass}
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                placeholder="2024"
-              />
-            </div>
-
-            {/* 6. Hours */}
-            <div>
-              <label className={labelClass}>{t("form.hours")}</label>
-              <input
-                className={inputClass}
-                value={hours}
-                onChange={(e) => setHours(e.target.value)}
-                placeholder="~20h"
-              />
-            </div>
-
-            {/* 7. Resolution */}
-            <div>
-              <label className={labelClass}>{t("form.resolution")}</label>
-              <input
-                className={inputClass}
-                value={resolution}
-                onChange={(e) => setResolution(e.target.value)}
-                placeholder="1920x1080"
-              />
+            {/* 5. Year / Hours / Resolution */}
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className={labelClass}>{t("form.year")}</label>
+                <input
+                  className={inputClass}
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  placeholder="2024"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>{t("form.hours")}</label>
+                <div className="w-full flex items-center h-[30px] border border-[#c0c0c0] focus-within:border-text transition-colors">
+                  <span className="pl-3 text-sm text-[#c0c0c0] select-none shrink-0">~</span>
+                  <input
+                    className="min-w-0 flex-1 h-full text-sm outline-none px-1"
+                    value={hours}
+                    onChange={(e) => setHours(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="20"
+                  />
+                  <span className="pr-3 text-sm text-[#c0c0c0] select-none shrink-0">h</span>
+                </div>
+              </div>
+              <div>
+                <label className={labelClass}>{t("form.resolution")}</label>
+                <input
+                  className={inputClass}
+                  value={resolution}
+                  onChange={(e) => setResolution(e.target.value)}
+                  placeholder="1920x1080"
+                />
+              </div>
             </div>
 
             {/* 8. Tools */}

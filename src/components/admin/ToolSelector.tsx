@@ -8,6 +8,10 @@ const tools = [
   { key: "procreate", label: "Procreate", ext: "png" },
   { key: "figma", label: "Figma", ext: "svg" },
   { key: "animate", label: "Animate", ext: "svg" },
+  { key: "krita", label: "Krita", ext: "svg" },
+  { key: "midjourney", label: "Midjourney", ext: "svg", invert: true },
+  { key: "chatgpt", label: "ChatGPT", ext: "svg", invert: true },
+  { key: "claude-ai", label: "Claude", ext: "svg", invert: true },
 ];
 
 type Props = {
@@ -19,7 +23,10 @@ export default function ToolSelector({ value, onChange }: Props) {
   const selected = new Set(
     value
       .split(" | ")
-      .map((s) => s.trim().toLowerCase())
+      .map((s) => {
+        const t = tools.find((t) => t.label.toLowerCase() === s.trim().toLowerCase());
+        return t ? t.key : s.trim().toLowerCase();
+      })
       .filter(Boolean)
   );
 
@@ -49,9 +56,12 @@ export default function ToolSelector({ value, onChange }: Props) {
               onClick={() => toggle(tool.key)}
               onMouseEnter={() => setHovered(tool.key)}
               onMouseLeave={() => setHovered(null)}
-              className={`w-[35px] h-[35px] transition-all ${
-                isSelected ? "opacity-100" : "opacity-25 grayscale"
-              }`}
+              className="w-[35px] h-[35px] overflow-hidden transition-all"
+              style={
+                tool.invert
+                  ? { opacity: isSelected ? 1 : 0.25, filter: "invert(1)" + (isSelected ? "" : " grayscale(1)") }
+                  : { opacity: isSelected ? 1 : 0.25, filter: isSelected ? "none" : "grayscale(1)" }
+              }
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

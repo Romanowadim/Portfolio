@@ -117,6 +117,7 @@ export default function CategoryMenu() {
   const [activeGrid, setActiveGrid] = useState<{ category: string; subcategory?: string } | null>(null);
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
   const [pendingArtworkId, setPendingArtworkId] = useState<string | null>(null);
+  const [pendingNav, setPendingNav] = useState<{ c: string; s?: string } | null>(null);
   const [openInstant, setOpenInstant] = useState(false);
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -130,6 +131,30 @@ export default function CategoryMenu() {
   const [dynamicArtworks, setDynamicArtworks] = useState<Artwork[]>([]);
   const [artworkOrder, setArtworkOrder] = useState<Record<string, string[]>>({});
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+
+  // Build search string from current category/subcategory/artwork
+  const buildSearch = (c: string | null, s?: string, artworkId?: string) => {
+    const p = new URLSearchParams();
+    if (c) p.set("c", c);
+    if (s) p.set("s", s);
+    if (artworkId) p.set("artwork", artworkId);
+    const str = p.toString();
+    return str ? `?${str}` : "";
+  };
+
+  // Apply category navigation from URL params (called after categories load)
+  const applyNav = useCallback((c: string, s: string | undefined, cats: Category[]) => {
+    const cat = cats.find((x) => x.id === c);
+    if (!cat) return;
+    if (s) {
+      setExpanded(c);
+      setActiveGrid({ category: c, subcategory: s });
+    } else if (cat.subcategories.length > 0) {
+      setExpanded(c);
+    } else {
+      setActiveGrid({ category: c });
+    }
+  }, []);
 
   // Fetch categories + dynamic artworks + order + deleted IDs
   useEffect(() => {
@@ -151,20 +176,33 @@ export default function CategoryMenu() {
       .catch(() => {});
   }, []);
 
-  // URL sync: open artwork from ?artwork=id on mount
-  // useLayoutEffect fires before browser paint → no hero image flash
+  // URL sync on mount: read ?c, ?s, ?artwork
   useLayoutEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("artwork");
-    if (!id) return;
-    const found = staticArtworks.find((a) => a.id === id);
-    if (found) {
-      setOpenInstant(true);
-      setActiveGrid({ category: found.category, subcategory: found.subcategory });
-      setSelectedArtwork(found);
+    const params = new URLSearchParams(window.location.search);
+    const c = params.get("c");
+    const s = params.get("s") ?? undefined;
+    const artworkId = params.get("artwork");
+
+    if (c) setPendingNav({ c, s });
+
+    if (artworkId) {
+      const found = staticArtworks.find((a) => a.id === artworkId);
+      if (found) {
+        setOpenInstant(true);
+        // If no explicit category in URL, derive from artwork
+        if (!c) setActiveGrid({ category: found.category, subcategory: found.subcategory });
+        setSelectedArtwork(found);
+      }
+      setPendingArtworkId(artworkId);
     }
-    // Always set pendingArtworkId so dynamic version (with extra fields) upgrades the modal
-    setPendingArtworkId(id);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Apply pending category nav once categories are loaded
+  useEffect(() => {
+    if (!pendingNav || categories.length === 0) return;
+    applyNav(pendingNav.c, pendingNav.s, categories);
+    setPendingNav(null);
+  }, [categories, pendingNav, applyNav]);
 
   // Reset instant flag after modal has mounted
   useEffect(() => {
@@ -182,17 +220,39 @@ export default function CategoryMenu() {
     setPendingArtworkId(null);
   }, [dynamicArtworks, pendingArtworkId]);
 
+  // Handle browser back/forward
+  useEffect(() => {
+    const onPopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const c = params.get("c");
+      const s = params.get("s") ?? undefined;
+      const artworkId = params.get("artwork");
+
+      if (!artworkId) setSelectedArtwork(null);
+      if (!c) {
+        setActiveGrid(null);
+        setExpanded(null);
+      } else {
+        applyNav(c, s, categories);
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [categories, applyNav]);
+
   const handleSelectArtwork = (artwork: Artwork | null) => {
     setSelectedArtwork(artwork);
     if (artwork) {
-      window.history.replaceState(null, "", "?artwork=" + artwork.id);
+      const search = buildSearch(activeGrid?.category ?? null, activeGrid?.subcategory, artwork.id);
+      window.history.replaceState(null, "", window.location.pathname + search);
       fetch("/api/stats/view", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ artworkId: artwork.id }),
       }).catch(() => {});
     } else {
-      window.history.replaceState(null, "", window.location.pathname);
+      const search = buildSearch(activeGrid?.category ?? null, activeGrid?.subcategory);
+      window.history.replaceState(null, "", window.location.pathname + search);
       document.documentElement.removeAttribute("data-artwork-open");
     }
   };
@@ -272,16 +332,20 @@ export default function CategoryMenu() {
   const handleCategoryClick = (category: string) => {
     if (activeGrid?.category === category && !activeGrid?.subcategory) {
       setActiveGrid(null);
+      window.history.pushState(null, "", window.location.pathname);
     } else {
       setActiveGrid({ category });
+      window.history.pushState(null, "", window.location.pathname + buildSearch(category));
     }
   };
 
   const handleSubClick = (category: string, subcategory: string) => {
     if (activeGrid?.category === category && activeGrid?.subcategory === subcategory) {
       setActiveGrid(null);
+      window.history.pushState(null, "", window.location.pathname + buildSearch(category));
     } else {
       setActiveGrid({ category, subcategory });
+      window.history.pushState(null, "", window.location.pathname + buildSearch(category, subcategory));
     }
   };
 
@@ -339,8 +403,14 @@ export default function CategoryMenu() {
               {hasSubs ? (
                 <button
                   onClick={() => {
-                    setExpanded(isExpanded ? null : cat.id);
-                    if (isExpanded) setActiveGrid(null);
+                    const next = isExpanded ? null : cat.id;
+                    setExpanded(next);
+                    if (isExpanded) {
+                      setActiveGrid(null);
+                      window.history.pushState(null, "", window.location.pathname);
+                    } else {
+                      window.history.pushState(null, "", window.location.pathname + buildSearch(cat.id));
+                    }
                   }}
                   onMouseEnter={() => setHoveredCategory(cat.id)}
                   onMouseLeave={() => setHoveredCategory(null)}

@@ -16,7 +16,9 @@
     "education": "EDUCATION",
     "educationText": "I studied in interior design from the Nizhny Novgorod State University of Architecture and Civil Engineering.",
     "programs": "PROGRAMS",
-    "programsText": "The programs I use in work"
+    "programsText": "The programs I use in work",
+    "aiSoftware": "AI SOFTWARE",
+    "aiSoftwareText": "AI tools I use in my workflow"
   },
   "portfolio": {
     "heading": "PORTFOLIO",

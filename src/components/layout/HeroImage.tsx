@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { usePathname } from "@/i18n/navigation";
+import { usePortfolioPreview } from "@/components/portfolio/PortfolioPreviewContext";
 
 const ease = [0.4, 0, 0.2, 1] as [number, number, number, number];
 const transition = { duration: 0.7, ease };
@@ -23,11 +24,18 @@ export default function HeroImage({ isFadingOut }: { isFadingOut: boolean }) {
   const isAbout = pathname === "/about";
   const isOrder = pathname === "/order";
 
-  // Synchronously check if URL has ?artwork= — computed before Framer Motion reads `initial`.
-  // When the modal closes, the URL is cleaned and React re-renders, so skipEntry becomes false
-  // and the hero image fades in normally.
-  const skipEntry = typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).has("artwork");
+  // Subscribe to portfolio preview context so this component re-renders when
+  // a category is selected/deselected — that re-evaluation makes skipEntry
+  // pick up the updated URL (pushState is called synchronously before state changes).
+  usePortfolioPreview();
+
+  // Synchronously check if URL has ?artwork= or ?c= — computed before Framer Motion reads `initial`.
+  // When the modal/category closes, the URL is cleaned and React re-renders, so skipEntry becomes
+  // false and the hero image fades in normally.
+  const skipEntry = typeof window !== "undefined" && (
+    new URLSearchParams(window.location.search).has("artwork") ||
+    new URLSearchParams(window.location.search).has("c")
+  );
 
   const variant = isAbout ? "about" : isOrder ? "order" : "home";
   // Keep "about" position during fade-out so it doesn't slide to "home"
