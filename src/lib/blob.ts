@@ -23,7 +23,6 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const ARTWORKS_FILE = path.join(DATA_DIR, "artworks.json");
 const CONTACTS_FILE = path.join(DATA_DIR, "contacts.json");
 const COWORKERS_FILE = path.join(DATA_DIR, "coworkers.json");
-
 export async function readDynamicArtworks(): Promise<Artwork[]> {
   try {
     const content = await readFile(ARTWORKS_FILE, "utf-8");
@@ -65,3 +64,4 @@ export async function writeCoworkers(coworkers: Coworker[]): Promise<void> {
   await mkdir(DATA_DIR, { recursive: true });
   await writeFile(COWORKERS_FILE, JSON.stringify(coworkers, null, 2), "utf-8");
 }
+

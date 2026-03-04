@@ -9,8 +9,8 @@ export type Artwork = {
   tools?: string;
   resolution?: string;
   hours?: string;
-  category: "personal" | "orders" | "youtube" | "other" | "gamedev";
-  subcategory?: "cg" | "lineart";
+  category: string;
+  subcategory?: string;
   objectPosition?: string;
   client?: string;
   clientName?: string;

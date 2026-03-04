@@ -581,48 +581,50 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                   </div>
                 )}
 
-                {/* Title */}
-                <h2 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
-                  {artwork.title[locale]}
-                </h2>
+                {/* Title + Metadata block */}
+                <div className="border-t border-b border-[#e8e8e8] py-[20px]">
+                  <h2 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
+                    {artwork.title[locale]}
+                  </h2>
 
-                {/* Metadata row */}
-                {(artwork.year || artwork.hours || artwork.resolution) && (
-                  <div className="mt-[16px] flex flex-col gap-[2px]">
-                    <div className="flex gap-[20px]">
-                      {artwork.year && (
+                  {/* Metadata row */}
+                  {(artwork.year || artwork.hours || artwork.resolution) && (
+                    <div className="mt-[16px] flex flex-col gap-[2px]">
+                      <div className="flex gap-[20px]">
+                        {artwork.year && (
+                          <span className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[20px]">
+                            {artwork.year}
+                          </span>
+                        )}
+                        {artwork.hours && (
+                          <span className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[20px]">
+                            {artwork.hours}
+                          </span>
+                        )}
+                      </div>
+                      {artwork.resolution && (
                         <span className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[20px]">
-                          {artwork.year}
-                        </span>
-                      )}
-                      {artwork.hours && (
-                        <span className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[20px]">
-                          {artwork.hours}
+                          {artwork.resolution}px.
                         </span>
                       )}
                     </div>
-                    {artwork.resolution && (
-                      <span className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[20px]">
-                        {artwork.resolution}px.
-                      </span>
-                    )}
-                  </div>
-                )}
+                  )}
 
-                {/* Admin: view stats */}
-                {isAdmin && viewStats && (
-                  <div className="mt-[16px] flex items-center gap-[8px]">
-                    <svg width="14" height="14" viewBox="0 0 20 14" fill="none" className="text-[#c0c0c0]">
-                      <path d="M10 0C5.5 0 1.73 2.89 0 7c1.73 4.11 5.5 7 10 7s8.27-2.89 10-7c-1.73-4.11-5.5-7-10-7zm0 11.67A4.67 4.67 0 1 1 10 2.33a4.67 4.67 0 0 1 0 9.34zM10 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" fill="currentColor" />
-                    </svg>
-                    <span className="text-[12px] font-bold tracking-[0.5px] text-[#c0c0c0]">{viewStats.total}</span>
-                    {viewStats.recent > 0 && (
-                      <span className="text-[12px] font-bold tracking-[0.5px]" style={{ color: "#81AB41" }}>
-                        +{viewStats.recent}
-                      </span>
-                    )}
-                  </div>
-                )}
+                  {/* Admin: view stats */}
+                  {isAdmin && viewStats && (
+                    <div className="mt-[16px] flex items-center gap-[8px]">
+                      <svg width="14" height="14" viewBox="0 0 20 14" fill="none" className="text-[#c0c0c0]">
+                        <path d="M10 0C5.5 0 1.73 2.89 0 7c1.73 4.11 5.5 7 10 7s8.27-2.89 10-7c-1.73-4.11-5.5-7-10-7zm0 11.67A4.67 4.67 0 1 1 10 2.33a4.67 4.67 0 0 1 0 9.34zM10 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" fill="currentColor" />
+                      </svg>
+                      <span className="text-[12px] font-bold tracking-[0.5px] text-[#c0c0c0]">{viewStats.total}</span>
+                      {viewStats.recent > 0 && (
+                        <span className="text-[12px] font-bold tracking-[0.5px]" style={{ color: "#81AB41" }}>
+                          +{viewStats.recent}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* Client review (for orders) */}
                 {artwork.review && (

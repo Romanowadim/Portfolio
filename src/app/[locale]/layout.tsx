@@ -5,6 +5,7 @@ import { routing } from "@/i18n/routing";
 import Header from "@/components/layout/Header";
 import MainContent from "@/components/layout/MainContent";
 import AdminProvider from "@/components/admin/AdminProvider";
+import SiteTracker from "@/components/layout/SiteTracker";
 import "@/app/globals.css";
 
 type Props = {
@@ -32,6 +33,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body>
         <NextIntlClientProvider>
           <AdminProvider initialIsAdmin={isAdmin}>
+            <SiteTracker />
             <Header />
             <MainContent>{children}</MainContent>
           </AdminProvider>

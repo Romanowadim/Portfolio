@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,7 +10,25 @@ import { artworks as staticArtworks, Artwork } from "@/data/artworks";
 import ArtworkFormModal from "@/components/admin/ArtworkFormModal";
 import ContactPickerModal from "@/components/admin/ContactPickerModal";
 import CoworkerPickerModal from "@/components/admin/CoworkerPickerModal";
+import CategoryFormModal from "@/components/admin/CategoryFormModal";
+import VisitsChart from "@/components/admin/VisitsChart";
 import type { Contact, Coworker } from "@/lib/blob";
+import type { Category, Subcategory } from "@/types/category";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const staticIds = new Set(staticArtworks.map((a) => a.id));
 
@@ -424,7 +442,200 @@ function CoworkerRow({ coworker, onEdit, onDeleted }: {
   );
 }
 
-const sections = [{ key: "statistic" }, { key: "contacts" }, { key: "coworkers" }] as const;
+const sections = [{ key: "statistic" }, { key: "categories" }, { key: "contacts" }, { key: "coworkers" }] as const;
+
+const DRAG_HANDLE_SVG = (
+  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+    <circle cx="2" cy="2" r="2" />
+    <circle cx="8" cy="2" r="2" />
+    <circle cx="2" cy="8" r="2" />
+    <circle cx="8" cy="8" r="2" />
+  </svg>
+);
+
+const EDIT_SVG_16 = (
+  <svg width="16" height="16" viewBox="0 0 20 19.9025" fill="none">
+    <path d="M12.4365 3.32148L16.5049 7.38989L6.20657 17.6883L2.14042 13.6198L12.4365 3.32148ZM19.5921 2.34027L17.7777 0.525894C17.0765 -0.175298 15.938 -0.175298 15.2344 0.525894L13.4964 2.26388L17.5648 6.33233L19.5921 4.30507C20.136 3.76118 20.136 2.88411 19.5921 2.34027ZM0.0113215 19.3383C-0.0627191 19.6716 0.238132 19.9701 0.571391 19.8891L5.105 18.7899L1.03885 14.7215L0.0113215 19.3383Z" fill="currentColor" />
+  </svg>
+);
+
+// Sortable row for a subcategory
+function SortableSubcategoryRow({
+  sub,
+  locale,
+  onEdit,
+}: {
+  sub: Subcategory;
+  locale: "ru" | "en";
+  onEdit: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sub.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-[12px] bg-[#fafafa] px-[16px] py-[8px]"
+    >
+      <span
+        {...attributes}
+        {...listeners}
+        className="cursor-grab text-[#c0c0c0] hover:text-[#808080] shrink-0 touch-none"
+        title="Drag"
+      >
+        {DRAG_HANDLE_SVG}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[12px] font-bold tracking-[1.2px] text-[#808080] uppercase truncate">
+          — {sub.label[locale]}
+        </p>
+        <p className="text-[10px] text-[#c0c0c0] tracking-[1px] uppercase mt-[1px]">{sub.id}</p>
+      </div>
+      <button
+        onClick={onEdit}
+        className="shrink-0 w-[14px] h-[14px] flex items-center justify-center text-[#c0c0c0] hover:text-[#808080] transition-colors"
+        title="Edit subcategory"
+      >
+        <svg width="14" height="14" viewBox="0 0 20 19.9025" fill="none">
+          <path d="M12.4365 3.32148L16.5049 7.38989L6.20657 17.6883L2.14042 13.6198L12.4365 3.32148ZM19.5921 2.34027L17.7777 0.525894C17.0765 -0.175298 15.938 -0.175298 15.2344 0.525894L13.4964 2.26388L17.5648 6.33233L19.5921 4.30507C20.136 3.76118 20.136 2.88411 19.5921 2.34027ZM0.0113215 19.3383C-0.0627191 19.6716 0.238132 19.9701 0.571391 19.8891L5.105 18.7899L1.03885 14.7215L0.0113215 19.3383Z" fill="currentColor" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+// Sortable row for a category in the cabinet panel
+function SortableCategoryRow({
+  category,
+  locale,
+  expanded,
+  onToggle,
+  onEdit,
+  onEditSub,
+  onAddSub,
+  onReorderSubs,
+}: {
+  category: Category;
+  locale: "ru" | "en";
+  expanded: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onEditSub: (sub: Subcategory) => void;
+  onAddSub: () => void;
+  onReorderSubs: (reordered: Subcategory[]) => void;
+}) {
+  const t = useTranslations("admin");
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
+
+  const subSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const handleSubDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = category.subcategories.findIndex((s) => s.id === active.id);
+    const newIndex = category.subcategories.findIndex((s) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    onReorderSubs(arrayMove(category.subcategories, oldIndex, newIndex));
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div className="flex items-center gap-[12px] bg-white px-[16px] py-[10px]">
+        {/* Drag handle */}
+        <span
+          {...attributes}
+          {...listeners}
+          className="cursor-grab text-[#c0c0c0] hover:text-[#808080] shrink-0 touch-none"
+          title="Drag"
+        >
+          {DRAG_HANDLE_SVG}
+        </span>
+
+        {/* Preview */}
+        {category.preview ? (
+          <div className="relative w-[40px] h-[40px] shrink-0 overflow-hidden bg-[#f0f0f0]">
+            <Image src={category.preview} alt="" fill className="object-cover" sizes="40px" />
+          </div>
+        ) : (
+          <div className="w-[40px] h-[40px] shrink-0 bg-[#f0f0f0]" />
+        )}
+
+        {/* Label */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold tracking-[1.5px] text-[#808080] uppercase truncate">
+            {category.label[locale]}
+          </p>
+          <p className="text-[11px] text-[#c0c0c0] tracking-[1px] uppercase mt-[1px]">
+            {category.id}
+          </p>
+        </div>
+
+        {/* Expand subs arrow — always visible */}
+        <button
+          onClick={onToggle}
+          className="shrink-0 text-[#c0c0c0] hover:text-[#808080] transition-colors text-[12px] px-2"
+          title="Expand subcategories"
+        >
+          {expanded ? "▲" : "▼"}
+        </button>
+
+        {/* Edit */}
+        <button
+          onClick={onEdit}
+          className="shrink-0 w-[16px] h-[16px] flex items-center justify-center text-[#c0c0c0] hover:text-[#808080] transition-colors"
+          title="Edit"
+        >
+          {EDIT_SVG_16}
+        </button>
+      </div>
+
+      {/* Subcategories */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="flex flex-col gap-[2px] pl-[56px] pb-[4px]">
+              <DndContext
+                sensors={subSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleSubDragEnd}
+              >
+                <SortableContext
+                  items={category.subcategories.map((s) => s.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {category.subcategories.map((sub) => (
+                    <SortableSubcategoryRow
+                      key={sub.id}
+                      sub={sub}
+                      locale={locale}
+                      onEdit={() => onEditSub(sub)}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+              <button
+                onClick={onAddSub}
+                className="flex items-center gap-[6px] px-[16px] py-[6px] text-[11px] font-bold tracking-[1.8px] uppercase text-[#c0c0c0] hover:text-[#808080] transition-colors"
+              >
+                + {t("addSubcategory")}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function CabinetPage() {
   const { isAdmin } = useAdmin();
@@ -448,6 +659,15 @@ export default function CabinetPage() {
   const [coworkers, setCoworkers] = useState<Coworker[]>([]);
   const [editingCoworker, setEditingCoworker] = useState<Coworker | null>(null);
   const [isCreatingCoworker, setIsCreatingCoworker] = useState(false);
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
+  type CatModalMode =
+    | { type: "newCategory" }
+    | { type: "editCategory"; category: Category }
+    | { type: "newSubcategory"; parentId: string }
+    | { type: "editSubcategory"; parentId: string; subcategory: Subcategory };
+  const [catModalMode, setCatModalMode] = useState<CatModalMode | null>(null);
 
   const openCreate = (imageUrl?: string) => {
     setInitialImageUrl(imageUrl);
@@ -490,6 +710,36 @@ export default function CabinetPage() {
       .catch(() => {});
   }, [activeSection]);
 
+  useEffect(() => {
+    if (activeSection !== "categories") return;
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data: Category[]) => setCategories(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [activeSection]);
+
+  const catSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const handleCatDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = categories.findIndex((c) => c.id === active.id);
+      const newIndex = categories.findIndex((c) => c.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const reordered = arrayMove(categories, oldIndex, newIndex);
+      setCategories(reordered);
+      fetch("/api/categories", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reordered),
+      }).catch(() => {});
+    },
+    [categories]
+  );
+
   if (!isAdmin) return null;
 
   // Merge static + dynamic; dynamic overrides static (same id); filter deleted
@@ -497,8 +747,6 @@ export default function CabinetPage() {
   for (const a of staticArtworks) artworkMap.set(a.id, a);
   for (const a of dynamicArtworks) artworkMap.set(a.id, a);
   const allArtworks = Array.from(artworkMap.values()).filter((a) => !deletedIds.has(a.id));
-
-  const CATEGORY_ORDER: Artwork["category"][] = ["personal", "orders", "youtube", "gamedev", "other"];
 
   const sortedArtworks = sortBy === "popularity"
     ? [...allArtworks].sort((a, b) => (viewCounts[b.id]?.total ?? 0) - (viewCounts[a.id]?.total ?? 0))
@@ -508,15 +756,23 @@ export default function CabinetPage() {
         return db - da; // newest first
       });
 
-  const categoryLabel = (cat: Artwork["category"]) => {
-    const key = `category${cat.charAt(0).toUpperCase()}${cat.slice(1)}` as Parameters<typeof t>[0];
-    return t(key);
+  // Use loaded categories for grouping; fall back to unique category IDs from artworks
+  const categoryOrder = categories.length > 0
+    ? categories.map((c) => c.id)
+    : [...new Set(allArtworks.map((a) => a.category))];
+
+  const categoryLabel = (catId: string) => {
+    const found = categories.find((c) => c.id === catId);
+    if (found) return found.label[locale];
+    // Fallback: try i18n key
+    const key = `category${catId.charAt(0).toUpperCase()}${catId.slice(1)}` as Parameters<typeof t>[0];
+    try { return t(key); } catch { return catId; }
   };
 
-  // For "category" mode: group by category in fixed order
-  const groupedByCategory: { category: Artwork["category"]; artworks: Artwork[] }[] =
+  // For "category" mode: group by category in order
+  const groupedByCategory: { category: string; artworks: Artwork[] }[] =
     sortBy === "category"
-      ? CATEGORY_ORDER
+      ? categoryOrder
           .map((cat) => ({ category: cat, artworks: allArtworks.filter((a) => a.category === cat) }))
           .filter((g) => g.artworks.length > 0)
       : [];
@@ -564,8 +820,12 @@ export default function CabinetPage() {
             className="fixed top-0 bottom-0 right-0 left-[calc(33.75vw+24px)] z-10 overflow-y-auto bg-[#f5f5f5]"
             style={{ paddingTop: 148 + 24, paddingBottom: 24, paddingRight: 24 }}
           >
+            <VisitsChart />
+
+            <div className="w-full h-px bg-[#e0e0e0]" />
+
             {/* Table header + sort controls in one row */}
-            <div className="flex items-center gap-[16px] pr-[16px] pb-[8px]">
+            <div className="flex items-center gap-[16px] pr-[16px] mb-[8px] border-b border-r border-[#e0e0e0]">
               <span className="w-[2px] h-[2em] bg-[#e0e0e0] shrink-0" />
               <p className="w-[314px] shrink-0 text-[10px] font-bold tracking-[1.8px] text-[#c0c0c0] uppercase">
                 {t("colNameInfo")}
@@ -752,12 +1012,82 @@ export default function CabinetPage() {
         )}
       </AnimatePresence>
 
+      {/* Categories panel */}
+      <AnimatePresence>
+        {activeSection === "categories" && (
+          <motion.div
+            key="categories-panel"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="fixed top-0 bottom-0 right-0 left-[calc(33.75vw+24px)] z-10 overflow-y-auto bg-[#f5f5f5]"
+            style={{ paddingTop: 148 + 24, paddingBottom: 24, paddingRight: 24 }}
+          >
+            <div className="flex flex-col gap-[4px]">
+              {/* Add section button */}
+              <button
+                onClick={() => setCatModalMode({ type: "newCategory" })}
+                className="w-full flex items-center justify-center gap-[8px] border-2 border-dashed border-[#e0e0e0] px-[16px] py-[14px] text-[#c0c0c0] hover:text-[#808080] hover:border-[#c0c0c0] hover:bg-[#c0c0c0]/5 transition-all duration-200"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1v14M1 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span className="text-[12px] font-bold tracking-[1.8px] uppercase">{t("addCategory")}</span>
+              </button>
+
+              {categories.length === 0 && (
+                <p className="text-center text-[12px] text-[#c0c0c0] py-[32px] tracking-[1.5px] uppercase">—</p>
+              )}
+
+              <DndContext
+                sensors={catSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleCatDragEnd}
+              >
+                <SortableContext
+                  items={categories.map((c) => c.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="flex flex-col gap-[4px]">
+                    {categories.map((cat) => (
+                      <SortableCategoryRow
+                        key={cat.id}
+                        category={cat}
+                        locale={locale}
+                        expanded={expandedCatId === cat.id}
+                        onToggle={() => setExpandedCatId(expandedCatId === cat.id ? null : cat.id)}
+                        onEdit={() => setCatModalMode({ type: "editCategory", category: cat })}
+                        onEditSub={(sub) => setCatModalMode({ type: "editSubcategory", parentId: cat.id, subcategory: sub })}
+                        onAddSub={() => setCatModalMode({ type: "newSubcategory", parentId: cat.id })}
+                        onReorderSubs={(reordered) => {
+                          const updated = categories.map((c) =>
+                            c.id === cat.id ? { ...c, subcategories: reordered } : c
+                          );
+                          setCategories(updated);
+                          fetch("/api/categories", {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(updated),
+                          }).catch(() => {});
+                        }}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Create modal */}
       <AnimatePresence>
         {isCreating && (
           <ArtworkFormModal
             key="new"
-            category="personal"
+            category={categories.length > 0 ? categories[0].id : "personal"}
+            categories={categories}
             initialImageUrl={initialImageUrl}
             onClose={() => setIsCreating(false)}
             onSaved={(created) => {
@@ -841,6 +1171,7 @@ export default function CabinetPage() {
             key={editingArtwork.id}
             category={editingArtwork.category}
             subcategory={editingArtwork.subcategory}
+            categories={categories}
             artwork={editingArtwork}
             onClose={() => setEditingArtwork(null)}
             onSaved={(updated) => {
@@ -854,6 +1185,22 @@ export default function CabinetPage() {
             onDeleted={(id) => {
               setDynamicArtworks((prev) => prev.filter((a) => a.id !== id));
               setEditingArtwork(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Category form modal */}
+      <AnimatePresence>
+        {catModalMode && (
+          <CategoryFormModal
+            key={JSON.stringify(catModalMode)}
+            mode={catModalMode}
+            categories={categories}
+            onClose={() => setCatModalMode(null)}
+            onSaved={(updated) => {
+              setCategories(updated);
+              setCatModalMode(null);
             }}
           />
         )}

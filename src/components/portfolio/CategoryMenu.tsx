@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useLayoutEffect, useCallback } from "react";
-import { useTranslations, useLocale } from "next-intl";
+import { useLocale } from "next-intl";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { getArtworksByCategory, artworks as staticArtworks, Artwork } from "@/data/artworks";
@@ -24,6 +24,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import SortableArtworkCard from "@/components/admin/SortableArtworkCard";
+import type { Category } from "@/types/category";
 
 function ArtworkCard({
   artwork,
@@ -107,34 +108,11 @@ function ArtworkCard({
   );
 }
 
-const categoryPreviews: Record<string, string> = {
-  personal: "/images/portfolio-previews/personal.png",
-  orders: "/images/portfolio-previews/orders.jpg",
-  youtube: "/images/portfolio-previews/youtube.jpg",
-  other: "/images/portfolio-previews/other.jpg",
-  gamedev: "/images/portfolio-previews/gamedev.jpg",
-};
-
-const subcategories: Record<string, { key: string; slug: string }[]> = {
-  personal: [
-    { key: "cg", slug: "cg" },
-    { key: "lineart", slug: "lineart" },
-  ],
-};
-
-const categories = [
-  { key: "personal", slug: "personal" },
-  { key: "orders", slug: "orders" },
-  { key: "youtube", slug: "youtube" },
-  { key: "other", slug: "other" },
-  { key: "gamedev", slug: "gamedev" },
-] as const;
-
 export default function CategoryMenu() {
-  const t = useTranslations("portfolio");
   const locale = useLocale() as "ru" | "en";
   const { isAdmin } = useAdmin();
   const { setPreviewActive } = usePortfolioPreview();
+  const [categories, setCategories] = useState<Category[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [activeGrid, setActiveGrid] = useState<{ category: string; subcategory?: string } | null>(null);
   const [selectedArtwork, setSelectedArtwork] = useState<Artwork | null>(null);
@@ -153,8 +131,12 @@ export default function CategoryMenu() {
   const [artworkOrder, setArtworkOrder] = useState<Record<string, string[]>>({});
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
 
-  // Fetch dynamic artworks + order + deleted IDs
+  // Fetch categories + dynamic artworks + order + deleted IDs
   useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data: Category[]) => setCategories(data))
+      .catch(() => {});
     fetch("/api/artworks")
       .then((r) => r.json())
       .then((data: Artwork[]) => setDynamicArtworks(data))
@@ -335,50 +317,54 @@ export default function CategoryMenu() {
     }
   };
 
+  const hoveredCategoryData = hoveredCategory
+    ? categories.find((c) => c.id === hoveredCategory)
+    : null;
+
   return (
     <>
       <div className="flex flex-col gap-[28px]">
         {categories.map((cat, i) => {
-          const subs = subcategories[cat.key];
-          const isExpanded = expanded === cat.key;
+          const hasSubs = cat.subcategories.length > 0;
+          const isExpanded = expanded === cat.id;
 
           return (
             <motion.div
-              key={cat.key}
+              key={cat.id}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20, transition: { delay: (4 - i) * 0.05, duration: 0.3 } }}
+              exit={{ opacity: 0, x: -20, transition: { delay: (categories.length - 1 - i) * 0.05, duration: 0.3 } }}
               transition={{ delay: 0.15 + i * 0.08, duration: 0.4, ease: "easeOut" }}
             >
-              {subs ? (
+              {hasSubs ? (
                 <button
                   onClick={() => {
-                    setExpanded(isExpanded ? null : cat.key);
+                    setExpanded(isExpanded ? null : cat.id);
                     if (isExpanded) setActiveGrid(null);
                   }}
-                  onMouseEnter={() => setHoveredCategory(cat.key)}
+                  onMouseEnter={() => setHoveredCategory(cat.id)}
                   onMouseLeave={() => setHoveredCategory(null)}
                   className={`h-[30px] flex items-center text-sm font-bold tracking-[2.8px] uppercase transition-colors ${
                     isExpanded ? "text-text-muted" : "text-[#c0c0c0] hover:text-text-muted"
                   }`}
                 >
-                  {t(cat.key)}
+                  {cat.label[locale]}
                 </button>
               ) : (
                 <button
-                  onClick={() => handleCategoryClick(cat.key)}
-                  onMouseEnter={() => setHoveredCategory(cat.key)}
+                  onClick={() => handleCategoryClick(cat.id)}
+                  onMouseEnter={() => setHoveredCategory(cat.id)}
                   onMouseLeave={() => setHoveredCategory(null)}
                   className={`h-[30px] flex items-center text-sm font-bold tracking-[2.8px] uppercase transition-colors ${
-                    isCategoryActive(cat.key) ? "text-text-muted" : "text-[#c0c0c0] hover:text-text-muted"
+                    isCategoryActive(cat.id) ? "text-text-muted" : "text-[#c0c0c0] hover:text-text-muted"
                   }`}
                 >
-                  {t(cat.key)}
+                  {cat.label[locale]}
                 </button>
               )}
 
               <AnimatePresence>
-                {isExpanded && subs && (
+                {isExpanded && hasSubs && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
@@ -387,17 +373,17 @@ export default function CategoryMenu() {
                     className="overflow-hidden"
                   >
                     <div className="flex flex-col gap-[14px] pl-[43px] pt-[14px]">
-                      {subs.map((sub) => (
+                      {cat.subcategories.map((sub) => (
                         <button
-                          key={sub.key}
-                          onClick={() => handleSubClick(cat.key, sub.slug)}
+                          key={sub.id}
+                          onClick={() => handleSubClick(cat.id, sub.id)}
                           className={`text-left text-sm font-medium transition-colors ${
-                            activeGrid?.category === cat.key && activeGrid?.subcategory === sub.slug
+                            activeGrid?.category === cat.id && activeGrid?.subcategory === sub.id
                               ? "text-text-muted"
                               : "text-[#c0c0c0] hover:text-text-muted"
                           }`}
                         >
-                          -&nbsp;&nbsp;&nbsp;{t(sub.key)}
+                          -&nbsp;&nbsp;&nbsp;{sub.label[locale]}
                         </button>
                       ))}
                     </div>
@@ -411,7 +397,7 @@ export default function CategoryMenu() {
 
       {/* Category hover preview — covers hero image area */}
       <AnimatePresence>
-        {showPreview && categoryPreviews[hoveredCategory] && (
+        {showPreview && hoveredCategoryData?.preview && (
           <motion.div
             key={`preview-${hoveredCategory}`}
             initial={{ opacity: 0 }}
@@ -421,8 +407,8 @@ export default function CategoryMenu() {
             className="fixed top-0 bottom-0 right-0 left-[33.75vw] z-[5] pointer-events-none"
           >
             <Image
-              src={categoryPreviews[hoveredCategory]}
-              alt={hoveredCategory}
+              src={hoveredCategoryData.preview}
+              alt={hoveredCategory ?? ""}
               fill
               className="object-cover object-center"
               sizes="66vw"
@@ -433,7 +419,7 @@ export default function CategoryMenu() {
 
       {/* Artwork grid overlay — covers hero image area */}
       <AnimatePresence>
-        {activeGrid && mergedArtworks.length > 0 && (
+        {activeGrid && (mergedArtworks.length > 0 || isAdmin) && (
           <motion.div
             key={`${activeGrid.category}-${activeGrid.subcategory ?? "all"}`}
             initial={{ opacity: 0 }}
@@ -514,6 +500,7 @@ export default function CategoryMenu() {
           <ArtworkFormModal
             category={activeGrid.category}
             subcategory={activeGrid.subcategory}
+            categories={categories}
             initialImageUrl={addInitialImageUrl}
             onClose={() => setShowAddModal(false)}
             onSaved={handleArtworkAdded}
@@ -527,6 +514,7 @@ export default function CategoryMenu() {
             key={editingArtwork.id}
             category={editingArtwork.category}
             subcategory={editingArtwork.subcategory}
+            categories={categories}
             artwork={editingArtwork}
             onClose={() => setEditingArtwork(null)}
             onSaved={handleArtworkUpdated}

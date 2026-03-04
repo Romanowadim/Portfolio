@@ -160,6 +160,7 @@ export default function OrderForm() {
       {/* Go To Conditions */}
       <button
         type="button"
+        onClick={() => fetch("/api/stats/order-click", { method: "POST" }).catch(() => {})}
         className="relative w-full lg:w-[15.5vw] h-[30px] border border-[#c0c0c0] flex items-center justify-center text-sm font-bold tracking-[2.8px] text-[#c0c0c0] hover:border-text-secondary hover:text-text-secondary transition-colors"
       >
         <span>{t("goToConditions")}</span>

@@ -10,6 +10,7 @@ import ToolSelector from "./ToolSelector";
 import ContactPickerModal from "./ContactPickerModal";
 import CoworkerPickerModal from "./CoworkerPickerModal";
 import type { Contact, Coworker } from "@/lib/blob";
+import type { Category } from "@/types/category";
 
 const socialOptions = [
   "vk",
@@ -25,6 +26,7 @@ const socialOptions = [
 type Props = {
   category: string;
   subcategory?: string;
+  categories?: Category[];
   artwork?: Artwork;
   initialImageUrl?: string;
   onClose: () => void;
@@ -35,6 +37,7 @@ type Props = {
 export default function ArtworkFormModal({
   category,
   subcategory,
+  categories: categoriesProp,
   artwork: editArtwork,
   initialImageUrl,
   onClose,
@@ -43,6 +46,19 @@ export default function ArtworkFormModal({
 }: Props) {
   const isEdit = !!editArtwork;
   const t = useTranslations("admin");
+
+  // Categories state (fallback fetch if not passed as prop)
+  const [categoriesLocal, setCategoriesLocal] = useState<Category[]>(categoriesProp ?? []);
+  useEffect(() => {
+    if (categoriesProp) { setCategoriesLocal(categoriesProp); return; }
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data: Category[]) => setCategoriesLocal(data))
+      .catch(() => {});
+  }, [categoriesProp]);
+
+  const currentCatData = categoriesLocal.find((c) => c.id === cat);
+  const availableSubs = currentCatData?.subcategories ?? [];
 
   // Image state
   const [imageUrl, setImageUrl] = useState(editArtwork?.image || initialImageUrl || "");
@@ -235,8 +251,8 @@ export default function ArtworkFormModal({
       hours: hours || undefined,
       resolution: resolution || undefined,
       tools: tools || undefined,
-      category: cat as Artwork["category"],
-      subcategory: subcat ? (subcat as Artwork["subcategory"]) : undefined,
+      category: cat,
+      subcategory: subcat || undefined,
       client: client || undefined,
       clientName: clientName || undefined,
       clientRole: clientRole || undefined,
@@ -506,13 +522,14 @@ export default function ArtworkFormModal({
                 <select
                   className={inputClass}
                   value={cat}
-                  onChange={(e) => setCat(e.target.value)}
+                  onChange={(e) => { setCat(e.target.value); setSubcat(""); }}
                 >
-                  <option value="personal">Personal</option>
-                  <option value="orders">Orders</option>
-                  <option value="youtube">YouTube</option>
-                  <option value="other">Other</option>
-                  <option value="gamedev">Gamedev</option>
+                  {categoriesLocal.map((c) => (
+                    <option key={c.id} value={c.id}>{c.label.en}</option>
+                  ))}
+                  {categoriesLocal.length === 0 && (
+                    <option value={cat}>{cat}</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -523,8 +540,9 @@ export default function ArtworkFormModal({
                   onChange={(e) => setSubcat(e.target.value)}
                 >
                   <option value="">—</option>
-                  <option value="cg">CG</option>
-                  <option value="lineart">Line Art</option>
+                  {availableSubs.map((s) => (
+                    <option key={s.id} value={s.id}>{s.label.en}</option>
+                  ))}
                 </select>
               </div>
             </div>
