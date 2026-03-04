@@ -35,9 +35,11 @@ type Props = {
   onPrev?: () => void;
   onNext?: () => void;
   instant?: boolean;
+  isHidden?: boolean;
+  onToggleHidden?: () => void;
 };
 
-export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext, instant }: Props) {
+export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext, instant, isHidden, onToggleHidden }: Props) {
   const locale = useLocale() as "ru" | "en";
   const { isAdmin } = useAdmin();
   const isOrder = !!artwork.clientName;
@@ -146,6 +148,26 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
               fill="currentColor"
             />
           </svg>
+        </button>
+      )}
+
+      {/* Hide/Show button (admin only) */}
+      {isAdmin && onToggleHidden && (
+        <button
+          onClick={onToggleHidden}
+          className="absolute top-[140px] right-[62px] z-10 w-[20px] h-[20px] flex items-center justify-center text-[#cccccc] hover:text-[#808080] transition-colors"
+        >
+          {isHidden ? (
+            <svg width="18" height="16" viewBox="0 0 18.89 16" fill="currentColor">
+              <path fillRule="evenodd" clipRule="evenodd" d="M2.726.22a.75.75 0 0 0-1.06 0 .75.75 0 0 0 0 1.06l14.5 14.5a.75.75 0 0 0 1.06-1.06l-1.745-1.745a10.03 10.03 0 0 0 3.3-4.38 1.65 1.65 0 0 0 0-1.186C17.338 3.66 13.702 1 9.444 1 7.728 1 6.112 1.432 4.7 2.194L2.726.22ZM7.198 4.691l1.091 1.092a2.5 2.5 0 0 1 3.374 3.374l1.092 1.091A4 4 0 0 0 9.446 4a3.98 3.98 0 0 0-2.248.691Z" />
+              <path d="M10.194 11.93l2.523 2.523A9.99 9.99 0 0 1 9.446 15c-4.257 0-7.893-2.66-9.336-6.41a1.65 1.65 0 0 1 0-1.186 10.01 10.01 0 0 1 2.174-3.384l2.232 2.232A4 4 0 0 0 9.446 12c.256 0 .506-.024.748-.07Z" />
+            </svg>
+          ) : (
+            <svg width="18" height="14" viewBox="0 0 18.89 14" fill="currentColor">
+              <path d="M9.446 9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+              <path fillRule="evenodd" clipRule="evenodd" d="M.11 7.59a1.65 1.65 0 0 1 0-1.186C1.555 2.658 5.189 0 9.444 0c4.258 0 7.894 2.66 9.336 6.41a1.65 1.65 0 0 1 0 1.186C17.336 11.342 13.702 14 9.446 14 5.189 14 1.553 11.34.11 7.59ZM13.446 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />
+            </svg>
+          )}
         </button>
       )}
 

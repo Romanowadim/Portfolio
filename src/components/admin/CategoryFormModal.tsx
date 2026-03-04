@@ -88,6 +88,7 @@ export default function CategoryFormModal({ mode, categories: currentCategories,
           id,
           label: { ru: labelRu, en: labelEn },
           preview: preview || undefined,
+          createdAt: new Date().toISOString(),
           subcategories: [],
         };
         updated = [...currentCategories, newCat];
@@ -98,7 +99,7 @@ export default function CategoryFormModal({ mode, categories: currentCategories,
             : c
         );
       } else if (mode.type === "newSubcategory") {
-        const newSub: Subcategory = { id, label: { ru: labelRu, en: labelEn } };
+        const newSub: Subcategory = { id, label: { ru: labelRu, en: labelEn }, createdAt: new Date().toISOString() };
         updated = currentCategories.map((c) =>
           c.id === mode.parentId
             ? { ...c, subcategories: [...c.subcategories, newSub] }

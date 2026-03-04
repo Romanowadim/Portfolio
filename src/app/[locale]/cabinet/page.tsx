@@ -65,6 +65,8 @@ function ArtworkStatRow({
   onEdit,
   onDeleted,
   onNavigate,
+  isHidden,
+  onToggleHidden,
 }: {
   artwork: Artwork;
   viewCount: { total: number; recent: number };
@@ -72,6 +74,8 @@ function ArtworkStatRow({
   onEdit: () => void;
   onDeleted: (id: string) => void;
   onNavigate: () => void;
+  isHidden?: boolean;
+  onToggleHidden?: () => void;
 }) {
   const t = useTranslations("admin");
   const [deleting, setDeleting] = useState(false);
@@ -94,7 +98,7 @@ function ArtworkStatRow({
 
   return (
     <div
-      className="flex items-center gap-[16px] bg-white px-[16px] py-[12px] cursor-pointer hover:bg-[#fafafa] transition-colors"
+      className={`flex items-center gap-[16px] bg-white px-[16px] py-[12px] cursor-pointer hover:bg-[#fafafa] transition-colors ${isHidden ? "opacity-50" : ""}`}
       onClick={onNavigate}
     >
       {/* Thumbnail */}
@@ -183,6 +187,27 @@ function ArtworkStatRow({
           />
         </svg>
       </button>
+
+      {/* Hide/Show */}
+      {onToggleHidden && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleHidden(); }}
+          className="shrink-0 w-[16px] h-[16px] flex items-center justify-center text-[#c0c0c0] hover:text-[#808080] transition-colors"
+          title={isHidden ? "Show" : "Hide"}
+        >
+          {isHidden ? (
+            <svg width="16" height="14" viewBox="0 0 18.89 16" fill="currentColor">
+              <path fillRule="evenodd" clipRule="evenodd" d="M2.726.22a.75.75 0 0 0-1.06 0 .75.75 0 0 0 0 1.06l14.5 14.5a.75.75 0 0 0 1.06-1.06l-1.745-1.745a10.03 10.03 0 0 0 3.3-4.38 1.65 1.65 0 0 0 0-1.186C17.338 3.66 13.702 1 9.444 1 7.728 1 6.112 1.432 4.7 2.194L2.726.22ZM7.198 4.691l1.091 1.092a2.5 2.5 0 0 1 3.374 3.374l1.092 1.091A4 4 0 0 0 9.446 4a3.98 3.98 0 0 0-2.248.691Z" />
+              <path d="M10.194 11.93l2.523 2.523A9.99 9.99 0 0 1 9.446 15c-4.257 0-7.893-2.66-9.336-6.41a1.65 1.65 0 0 1 0-1.186 10.01 10.01 0 0 1 2.174-3.384l2.232 2.232A4 4 0 0 0 9.446 12c.256 0 .506-.024.748-.07Z" />
+            </svg>
+          ) : (
+            <svg width="16" height="12" viewBox="0 0 18.89 14" fill="currentColor">
+              <path d="M9.446 9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+              <path fillRule="evenodd" clipRule="evenodd" d="M.11 7.59a1.65 1.65 0 0 1 0-1.186C1.555 2.658 5.189 0 9.444 0c4.258 0 7.894 2.66 9.336 6.41a1.65 1.65 0 0 1 0 1.186C17.336 11.342 13.702 14 9.446 14 5.189 14 1.553 11.34.11 7.59ZM13.446 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />
+            </svg>
+          )}
+        </button>
+      )}
 
       {/* Delete */}
       <button
@@ -464,10 +489,14 @@ function SortableSubcategoryRow({
   sub,
   locale,
   onEdit,
+  viewCount,
+  artworkCount,
 }: {
   sub: Subcategory;
   locale: "ru" | "en";
   onEdit: () => void;
+  viewCount?: { total: number; recent: number };
+  artworkCount: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sub.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
@@ -486,12 +515,44 @@ function SortableSubcategoryRow({
       >
         {DRAG_HANDLE_SVG}
       </span>
-      <div className="flex-1 min-w-0">
+      <div className="w-[220px] shrink-0 min-w-0">
         <p className="text-[12px] font-bold tracking-[1.2px] text-[#808080] uppercase truncate">
           — {sub.label[locale]}
         </p>
         <p className="text-[10px] text-[#c0c0c0] tracking-[1px] uppercase mt-[1px]">{sub.id}</p>
       </div>
+      <span className="w-px h-[24px] bg-[#ebebeb] shrink-0" />
+      <div className="flex items-center gap-[16px] shrink-0 w-[120px] justify-end">
+        {viewCount && viewCount.recent > 0 && (
+          <span className="text-[13px] font-bold tracking-[0.5px]" style={{ color: "#81AB41" }}>
+            +{viewCount.recent}
+          </span>
+        )}
+        <div className="flex items-center gap-[5px] text-[#c0c0c0]">
+          <EyeIcon />
+          <span className="text-[13px] font-bold tracking-[0.5px]">{viewCount?.total ?? 0}</span>
+        </div>
+      </div>
+      <span className="w-px h-[24px] bg-[#ebebeb] shrink-0" />
+      {/* Artwork count */}
+      <div className="w-[80px] shrink-0 text-[13px] font-bold tracking-[0.5px] text-[#c0c0c0] text-right">
+        {artworkCount}
+      </div>
+      <span className="w-px h-[24px] bg-[#ebebeb] shrink-0" />
+      {/* Date */}
+      <div className="w-[130px] shrink-0">
+        {sub.createdAt && (() => {
+          const { date, time } = formatCreatedAt(sub.createdAt, locale);
+          return (
+            <>
+              <p className="text-[12px] font-medium tracking-[1.2px] text-[#c0c0c0]">{date}</p>
+              <p className="text-[12px] font-medium tracking-[1.2px] text-[#c0c0c0] mt-[2px]">{time}</p>
+            </>
+          );
+        })()}
+      </div>
+      <span className="w-px h-[24px] bg-[#ebebeb] shrink-0" />
+      <div className="flex-1" />
       <button
         onClick={onEdit}
         className="shrink-0 w-[14px] h-[14px] flex items-center justify-center text-[#c0c0c0] hover:text-[#808080] transition-colors"
@@ -515,6 +576,8 @@ function SortableCategoryRow({
   onEditSub,
   onAddSub,
   onReorderSubs,
+  categoryViewCounts,
+  artworkCounts,
 }: {
   category: Category;
   locale: "ru" | "en";
@@ -524,6 +587,8 @@ function SortableCategoryRow({
   onEditSub: (sub: Subcategory) => void;
   onAddSub: () => void;
   onReorderSubs: (reordered: Subcategory[]) => void;
+  categoryViewCounts: Record<string, { total: number; recent: number }>;
+  artworkCounts: Record<string, number>;
 }) {
   const t = useTranslations("admin");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: category.id });
@@ -555,6 +620,15 @@ function SortableCategoryRow({
           {DRAG_HANDLE_SVG}
         </span>
 
+        {/* Expand subs arrow */}
+        <button
+          onClick={onToggle}
+          className="shrink-0 text-[#c0c0c0] hover:text-[#808080] transition-colors text-[12px]"
+          title="Expand subcategories"
+        >
+          {expanded ? "▲" : "▼"}
+        </button>
+
         {/* Preview */}
         {category.preview ? (
           <div className="relative w-[40px] h-[40px] shrink-0 overflow-hidden bg-[#f0f0f0]">
@@ -565,7 +639,7 @@ function SortableCategoryRow({
         )}
 
         {/* Label */}
-        <div className="flex-1 min-w-0">
+        <div className="w-[200px] shrink-0 min-w-0">
           <p className="text-[13px] font-bold tracking-[1.5px] text-[#808080] uppercase truncate">
             {category.label[locale]}
           </p>
@@ -574,14 +648,41 @@ function SortableCategoryRow({
           </p>
         </div>
 
-        {/* Expand subs arrow — always visible */}
-        <button
-          onClick={onToggle}
-          className="shrink-0 text-[#c0c0c0] hover:text-[#808080] transition-colors text-[12px] px-2"
-          title="Expand subcategories"
-        >
-          {expanded ? "▲" : "▼"}
-        </button>
+        <span className="w-px h-[32px] bg-[#ebebeb] shrink-0" />
+        <div className="flex items-center gap-[16px] shrink-0 w-[120px] justify-end">
+          {categoryViewCounts[category.id]?.recent > 0 && (
+            <span className="text-[13px] font-bold tracking-[0.5px]" style={{ color: "#81AB41" }}>
+              +{categoryViewCounts[category.id].recent}
+            </span>
+          )}
+          <div className="flex items-center gap-[5px] text-[#c0c0c0]">
+            <EyeIcon />
+            <span className="text-[13px] font-bold tracking-[0.5px]">{categoryViewCounts[category.id]?.total ?? 0}</span>
+          </div>
+        </div>
+        <span className="w-px h-[32px] bg-[#ebebeb] shrink-0" />
+
+        {/* Artwork count */}
+        <div className="w-[80px] shrink-0 text-[13px] font-bold tracking-[0.5px] text-[#c0c0c0] text-right">
+          {artworkCounts[category.id] ?? 0}
+        </div>
+        <span className="w-px h-[32px] bg-[#ebebeb] shrink-0" />
+
+        {/* Date */}
+        <div className="w-[130px] shrink-0">
+          {category.createdAt && (() => {
+            const { date, time } = formatCreatedAt(category.createdAt, locale);
+            return (
+              <>
+                <p className="text-[12px] font-medium tracking-[1.2px] text-[#c0c0c0]">{date}</p>
+                <p className="text-[12px] font-medium tracking-[1.2px] text-[#c0c0c0] mt-[2px]">{time}</p>
+              </>
+            );
+          })()}
+        </div>
+        <span className="w-px h-[32px] bg-[#ebebeb] shrink-0" />
+
+        <div className="flex-1" />
 
         {/* Edit */}
         <button
@@ -619,6 +720,8 @@ function SortableCategoryRow({
                       sub={sub}
                       locale={locale}
                       onEdit={() => onEditSub(sub)}
+                      viewCount={categoryViewCounts[`${category.id}/${sub.id}`]}
+                      artworkCount={artworkCounts[`${category.id}/${sub.id}`] ?? 0}
                     />
                   ))}
                 </SortableContext>
@@ -648,6 +751,7 @@ export default function CabinetPage() {
   const [viewCounts, setViewCounts] = useState<Record<string, { total: number; recent: number }>>({});
   const [dynamicArtworks, setDynamicArtworks] = useState<Artwork[]>([]);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [initialImageUrl, setInitialImageUrl] = useState<string | undefined>();
@@ -661,6 +765,7 @@ export default function CabinetPage() {
   const [isCreatingCoworker, setIsCreatingCoworker] = useState(false);
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryViewCounts, setCategoryViewCounts] = useState<Record<string, { total: number; recent: number }>>({});
   const [expandedCatId, setExpandedCatId] = useState<string | null>(null);
   type CatModalMode =
     | { type: "newCategory" }
@@ -692,6 +797,10 @@ export default function CabinetPage() {
       .then((r) => r.json())
       .then((data: string[]) => setDeletedIds(new Set(data)))
       .catch(() => {});
+    fetch("/api/hidden-artworks")
+      .then((r) => r.json())
+      .then((data: string[]) => setHiddenIds(new Set(data)))
+      .catch(() => {});
   }, [activeSection]);
 
   useEffect(() => {
@@ -715,6 +824,18 @@ export default function CabinetPage() {
     fetch("/api/categories")
       .then((r) => r.json())
       .then((data: Category[]) => setCategories(Array.isArray(data) ? data : []))
+      .catch(() => {});
+    fetch("/api/stats/category-views")
+      .then((r) => r.json())
+      .then((data: Record<string, { total: number; recent: number }>) => setCategoryViewCounts(data))
+      .catch(() => {});
+    fetch("/api/artworks")
+      .then((r) => r.json())
+      .then((data: Artwork[]) => setDynamicArtworks(data))
+      .catch(() => {});
+    fetch("/api/deleted-artworks")
+      .then((r) => r.json())
+      .then((data: string[]) => setDeletedIds(new Set(data)))
       .catch(() => {});
   }, [activeSection]);
 
@@ -740,6 +861,25 @@ export default function CabinetPage() {
     [categories]
   );
 
+  const handleToggleHidden = async (id: string) => {
+    const isCurrentlyHidden = hiddenIds.has(id);
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      if (isCurrentlyHidden) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    try {
+      const res = await fetch("/api/hidden-artworks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, hidden: !isCurrentlyHidden }),
+      });
+      const data: string[] = await res.json();
+      setHiddenIds(new Set(data));
+    } catch {}
+  };
+
   if (!isAdmin) return null;
 
   // Merge static + dynamic; dynamic overrides static (same id); filter deleted
@@ -747,6 +887,15 @@ export default function CabinetPage() {
   for (const a of staticArtworks) artworkMap.set(a.id, a);
   for (const a of dynamicArtworks) artworkMap.set(a.id, a);
   const allArtworks = Array.from(artworkMap.values()).filter((a) => !deletedIds.has(a.id));
+
+  // Count artworks per category / subcategory key
+  const artworkCounts: Record<string, number> = {};
+  for (const a of allArtworks) {
+    artworkCounts[a.category] = (artworkCounts[a.category] ?? 0) + 1;
+    if (a.subcategory) {
+      artworkCounts[`${a.category}/${a.subcategory}`] = (artworkCounts[`${a.category}/${a.subcategory}`] ?? 0) + 1;
+    }
+  }
 
   const sortedArtworks = sortBy === "popularity"
     ? [...allArtworks].sort((a, b) => (viewCounts[b.id]?.total ?? 0) - (viewCounts[a.id]?.total ?? 0))
@@ -886,6 +1035,8 @@ export default function CabinetPage() {
                             setDeletedIds((prev) => new Set([...prev, id]));
                           }}
                           onNavigate={() => router.push(`/portfolio?artwork=${artwork.id}`)}
+                          isHidden={hiddenIds.has(artwork.id)}
+                          onToggleHidden={() => handleToggleHidden(artwork.id)}
                         />
                       ))}
                     </div>
@@ -907,6 +1058,8 @@ export default function CabinetPage() {
                       setDeletedIds((prev) => new Set([...prev, id]));
                     }}
                     onNavigate={() => router.push(`/portfolio?artwork=${artwork.id}`)}
+                    isHidden={hiddenIds.has(artwork.id)}
+                    onToggleHidden={() => handleToggleHidden(artwork.id)}
                   />
                 ))}
               </div>
@@ -1024,6 +1177,36 @@ export default function CabinetPage() {
             className="fixed top-0 bottom-0 right-0 left-[calc(33.75vw+24px)] z-10 overflow-y-auto bg-[#f5f5f5]"
             style={{ paddingTop: 148 + 24, paddingBottom: 24, paddingRight: 24 }}
           >
+            {/* Table header — same flex/gap/px as SortableCategoryRow */}
+            <div className="flex items-center gap-[12px] px-[16px] mb-[8px] border border-[#e0e0e0]">
+              {/* Invisible drag handle — same svg size */}
+              <span className="shrink-0 invisible">{DRAG_HANDLE_SVG}</span>
+              {/* Invisible arrow — same button style */}
+              <span className="shrink-0 text-[12px] invisible">▼</span>
+              {/* Invisible preview */}
+              <div className="w-[40px] shrink-0" />
+              {/* NAME / INFO — same w-[200px] as label */}
+              <p className="w-[200px] shrink-0 text-[10px] font-bold tracking-[1.8px] text-[#c0c0c0] uppercase">
+                {t("colNameInfo")}
+              </p>
+              <span className="w-px h-[2em] bg-[#e0e0e0] shrink-0" />
+              {/* VIEWS — same w-[120px] */}
+              <p className="w-[120px] shrink-0 text-[10px] font-bold tracking-[1.8px] text-[#c0c0c0] uppercase">
+                {t("colViews")}
+              </p>
+              <span className="w-px h-[2em] bg-[#e0e0e0] shrink-0" />
+              {/* CARDS */}
+              <p className="w-[80px] shrink-0 text-[10px] font-bold tracking-[1.8px] text-[#c0c0c0] uppercase">
+                {t("colCards")}
+              </p>
+              <span className="w-px h-[2em] bg-[#e0e0e0] shrink-0" />
+              {/* DATE */}
+              <p className="w-[130px] shrink-0 text-[10px] font-bold tracking-[1.8px] text-[#c0c0c0] uppercase">
+                {t("colDate")}
+              </p>
+              <span className="w-px h-[2em] bg-[#e0e0e0] shrink-0" />
+            </div>
+
             <div className="flex flex-col gap-[4px]">
               {/* Add section button */}
               <button
@@ -1060,6 +1243,8 @@ export default function CabinetPage() {
                         onEdit={() => setCatModalMode({ type: "editCategory", category: cat })}
                         onEditSub={(sub) => setCatModalMode({ type: "editSubcategory", parentId: cat.id, subcategory: sub })}
                         onAddSub={() => setCatModalMode({ type: "newSubcategory", parentId: cat.id })}
+                        categoryViewCounts={categoryViewCounts}
+                        artworkCounts={artworkCounts}
                         onReorderSubs={(reordered) => {
                           const updated = categories.map((c) =>
                             c.id === cat.id ? { ...c, subcategories: reordered } : c

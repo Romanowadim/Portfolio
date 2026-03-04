@@ -31,11 +31,15 @@ function ArtworkCard({
   index,
   locale,
   onClick,
+  isHidden,
+  onToggleHidden,
 }: {
   artwork: Artwork;
   index: number;
   locale: "ru" | "en";
   onClick: () => void;
+  isHidden?: boolean;
+  onToggleHidden?: () => void;
 }) {
   return (
     <motion.button
@@ -50,7 +54,7 @@ function ArtworkCard({
         src={artwork.thumbnail || artwork.image}
         alt={artwork.title[locale]}
         fill
-        className="object-cover"
+        className={`object-cover transition-opacity duration-300 ${isHidden ? "opacity-50" : ""}`}
         sizes="(max-width: 1920px) 15vw, 288px"
       />
       {/* Figma overlay: white gradient + title + year/tools */}
@@ -104,6 +108,27 @@ function ArtworkCard({
           )}
         </div>
       )}
+      {onToggleHidden && (
+        <div
+          onClick={(e) => { e.stopPropagation(); onToggleHidden(); }}
+          className={`absolute top-[8px] right-[8px] w-[28px] h-[28px] flex items-center justify-center rounded-full bg-black/40 text-white cursor-pointer transition-opacity duration-200 pointer-events-auto ${
+            isHidden ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+          title={isHidden ? "Show" : "Hide"}
+        >
+          {isHidden ? (
+            <svg width="16" height="14" viewBox="0 0 18.89 16" fill="currentColor">
+              <path fillRule="evenodd" clipRule="evenodd" d="M2.726.22a.75.75 0 0 0-1.06 0 .75.75 0 0 0 0 1.06l14.5 14.5a.75.75 0 0 0 1.06-1.06l-1.745-1.745a10.03 10.03 0 0 0 3.3-4.38 1.65 1.65 0 0 0 0-1.186C17.338 3.66 13.702 1 9.444 1 7.728 1 6.112 1.432 4.7 2.194L2.726.22ZM7.198 4.691l1.091 1.092a2.5 2.5 0 0 1 3.374 3.374l1.092 1.091A4 4 0 0 0 9.446 4a3.98 3.98 0 0 0-2.248.691Z" />
+              <path d="M10.194 11.93l2.523 2.523A9.99 9.99 0 0 1 9.446 15c-4.257 0-7.893-2.66-9.336-6.41a1.65 1.65 0 0 1 0-1.186 10.01 10.01 0 0 1 2.174-3.384l2.232 2.232A4 4 0 0 0 9.446 12c.256 0 .506-.024.748-.07Z" />
+            </svg>
+          ) : (
+            <svg width="16" height="12" viewBox="0 0 18.89 14" fill="currentColor">
+              <path d="M9.446 9.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
+              <path fillRule="evenodd" clipRule="evenodd" d="M.11 7.59a1.65 1.65 0 0 1 0-1.186C1.555 2.658 5.189 0 9.444 0c4.258 0 7.894 2.66 9.336 6.41a1.65 1.65 0 0 1 0 1.186C17.336 11.342 13.702 14 9.446 14 5.189 14 1.553 11.34.11 7.59ZM13.446 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />
+            </svg>
+          )}
+        </div>
+      )}
     </motion.button>
   );
 }
@@ -131,6 +156,7 @@ export default function CategoryMenu() {
   const [dynamicArtworks, setDynamicArtworks] = useState<Artwork[]>([]);
   const [artworkOrder, setArtworkOrder] = useState<Record<string, string[]>>({});
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
 
   // Build search string from current category/subcategory/artwork
   const buildSearch = (c: string | null, s?: string, artworkId?: string) => {
@@ -173,6 +199,10 @@ export default function CategoryMenu() {
     fetch("/api/deleted-artworks")
       .then((r) => r.json())
       .then((data: string[]) => setDeletedIds(new Set(data)))
+      .catch(() => {});
+    fetch("/api/hidden-artworks")
+      .then((r) => r.json())
+      .then((data: string[]) => setHiddenIds(new Set(data)))
       .catch(() => {});
   }, []);
 
@@ -278,6 +308,7 @@ export default function CategoryMenu() {
     // Filter after merge so category changes and deletions are reflected correctly
     const unsorted = Array.from(idMap.values()).filter((a) => {
       if (deletedIds.has(a.id)) return false;
+      if (!isAdmin && hiddenIds.has(a.id)) return false;
       if (a.category !== activeGrid.category) return false;
       if (activeGrid.subcategory && a.subcategory !== activeGrid.subcategory) return false;
       return true;
@@ -336,6 +367,11 @@ export default function CategoryMenu() {
     } else {
       setActiveGrid({ category });
       window.history.pushState(null, "", window.location.pathname + buildSearch(category));
+      fetch("/api/stats/category-view", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: category }),
+      }).catch(() => {});
     }
   };
 
@@ -346,6 +382,11 @@ export default function CategoryMenu() {
     } else {
       setActiveGrid({ category, subcategory });
       window.history.pushState(null, "", window.location.pathname + buildSearch(category, subcategory));
+      fetch("/api/stats/category-view", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: `${category}/${subcategory}` }),
+      }).catch(() => {});
     }
   };
 
@@ -369,6 +410,26 @@ export default function CategoryMenu() {
       if (!exists) return [...prev, artwork];
       return prev.map((a) => (a.id === artwork.id ? artwork : a));
     });
+  };
+
+  const handleToggleHidden = async (id: string) => {
+    const isCurrentlyHidden = hiddenIds.has(id);
+    // Optimistic update
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      if (isCurrentlyHidden) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    try {
+      const res = await fetch("/api/hidden-artworks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, hidden: !isCurrentlyHidden }),
+      });
+      const data: string[] = await res.json();
+      setHiddenIds(new Set(data));
+    } catch {}
   };
 
   const handleArtworkDeleted = (id: string) => {
@@ -410,6 +471,11 @@ export default function CategoryMenu() {
                       window.history.pushState(null, "", window.location.pathname);
                     } else {
                       window.history.pushState(null, "", window.location.pathname + buildSearch(cat.id));
+                      fetch("/api/stats/category-view", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ key: cat.id }),
+                      }).catch(() => {});
                     }
                   }}
                   onMouseEnter={() => setHoveredCategory(cat.id)}
@@ -496,7 +562,7 @@ export default function CategoryMenu() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="fixed top-0 bottom-0 right-0 left-[calc(33.75vw+24px)] z-10 overflow-y-auto bg-[#f5f5f5]"
+            className="fixed top-0 bottom-0 right-0 left-[calc(33.75vw+24px)] z-[60] overflow-y-auto bg-[#f5f5f5]"
             style={{ paddingTop: 24, paddingBottom: 24, paddingRight: 24 }}
           >
             {isAdmin ? (
@@ -517,6 +583,8 @@ export default function CategoryMenu() {
                           index={i}
                           locale={locale}
                           onClick={() => handleSelectArtwork(artwork)}
+                          isHidden={hiddenIds.has(artwork.id)}
+                          onToggleHidden={() => handleToggleHidden(artwork.id)}
                         />
                       </SortableArtworkCard>
                     ))}
@@ -560,6 +628,8 @@ export default function CategoryMenu() {
                 setEditingArtwork(selectedArtwork);
                 handleSelectArtwork(null);
               }}
+              isHidden={hiddenIds.has(selectedArtwork.id)}
+              onToggleHidden={() => handleToggleHidden(selectedArtwork.id)}
             />
           );
         })()}
