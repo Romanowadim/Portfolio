@@ -1,8 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { motion } from "framer-motion";
-import { equipment } from "@/data/equipment";
+import type { Equipment } from "@/data/equipment";
 
 function localizeValue(value: string, locale: string) {
   if (locale !== "ru") return value;
@@ -12,6 +13,24 @@ function localizeValue(value: string, locale: string) {
 export default function EquipmentPage() {
   const t = useTranslations("equipment");
   const locale = useLocale();
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/equipment")
+      .then((r) => r.json())
+      .then((data: Equipment[]) => { if (Array.isArray(data)) setEquipment(data); })
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, []);
+
+  if (!loaded) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-148px)] items-center justify-center">
+        <span className="text-text-light text-sm animate-pulse">...</span>
+      </div>
+    );
+  }
 
   return (
     <motion.div
