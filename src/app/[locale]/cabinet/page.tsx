@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -8,6 +8,7 @@ import { useAdmin } from "@/components/admin/AdminProvider";
 import { useRouter } from "@/i18n/navigation";
 import { artworks as staticArtworks, Artwork } from "@/data/artworks";
 import ArtworkFormModal from "@/components/admin/ArtworkFormModal";
+import ArtworkModal from "@/components/portfolio/ArtworkModal";
 import ContactPickerModal from "@/components/admin/ContactPickerModal";
 import CoworkerPickerModal from "@/components/admin/CoworkerPickerModal";
 import CategoryFormModal from "@/components/admin/CategoryFormModal";
@@ -301,10 +302,14 @@ const SOCIAL_ICONS: Record<string, string> = {
   artstation: "AS", behance: "BE", deviantart: "DA",
 };
 
-function ContactRow({ contact, onEdit, onDeleted }: {
+function ContactRow({ contact, onEdit, onDeleted, artworks, onArtworkClick, onCreateArtwork, totalViews }: {
   contact: Contact;
   onEdit: () => void;
   onDeleted: (id: string) => void;
+  artworks: Artwork[];
+  onArtworkClick: (artwork: Artwork) => void;
+  onCreateArtwork: () => void;
+  totalViews: number;
 }) {
   const t = useTranslations("admin");
   const [deleting, setDeleting] = useState(false);
@@ -324,72 +329,165 @@ function ContactRow({ contact, onEdit, onDeleted }: {
     }
   };
 
+  const thumbsRef = React.useRef<HTMLDivElement>(null);
+  const [slotsPerRow, setSlotsPerRow] = React.useState(4);
+  const [itemSize, setItemSize] = React.useState(104);
+
+  React.useEffect(() => {
+    const el = thumbsRef.current;
+    if (!el) return;
+    const gap = 10, pad = 10, minItem = 90;
+    const update = () => {
+      const available = el.clientWidth - pad * 2;
+      const cols = Math.floor((available + gap) / (minItem + gap)) || 1;
+      const size = (available - (cols - 1) * gap) / cols;
+      setSlotsPerRow(cols);
+      setItemSize(Math.floor(size));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const rows = Math.max(1, Math.ceil(artworks.length / slotsPerRow));
+  const slotCount = rows * slotsPerRow;
+
   return (
-    <div className="flex items-center gap-[16px] bg-white px-[16px] py-[12px]">
-      {/* Avatar */}
-      <div className="relative w-[52px] h-[52px] shrink-0 rounded-full overflow-hidden bg-[#f0f0f0] flex items-center justify-center">
-        {contact.clientAvatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={contact.clientAvatar} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <span className="text-[18px] font-bold text-[#c0c0c0]">
-            {contact.clientName.charAt(0).toUpperCase()}
-          </span>
-        )}
-      </div>
+    <div className="bg-[#ebebeb]">
+      {/* Top row — info + actions */}
+      <div className="flex items-center gap-[16px] px-[16px] py-[12px] bg-white">
+        {/* Avatar */}
+        <div className="relative w-[52px] h-[52px] shrink-0 rounded-full overflow-hidden bg-[#f0f0f0] flex items-center justify-center">
+          {contact.clientAvatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={contact.clientAvatar} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[18px] font-bold text-[#c0c0c0]">
+              {contact.clientName.charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-bold tracking-[1.5px] text-[#808080] uppercase truncate">
-          {contact.clientName}
-        </p>
-        {(contact.clientRole || contact.client) && (
-          <p className="text-[12px] font-medium tracking-[1.2px] text-[#c0c0c0] uppercase mt-[2px] truncate">
-            {[contact.clientRole, contact.client].filter(Boolean).join(" · ")}
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold tracking-[1.5px] text-[#808080] uppercase truncate">
+            {contact.clientName}
           </p>
-        )}
-        {contact.clientSocials && contact.clientSocials.length > 0 && (
-          <div className="flex gap-[6px] mt-[4px]">
-            {contact.clientSocials.map((s, i) => (
-              <span key={i} className="text-[10px] font-bold tracking-[1px] text-[#c0c0c0] bg-[#f5f5f5] px-[5px] py-[1px]">
-                {SOCIAL_ICONS[s.icon] ?? s.icon.toUpperCase()}
-              </span>
-            ))}
+          {(contact.clientRole || contact.client) && (
+            <p className="text-[12px] font-medium tracking-[1.2px] text-[#c0c0c0] uppercase mt-[2px] truncate">
+              {[contact.clientRole, contact.client].filter(Boolean).join(" · ")}
+            </p>
+          )}
+          {contact.clientSocials && contact.clientSocials.length > 0 && (
+            <div className="flex gap-[6px] mt-[4px]">
+              {contact.clientSocials.map((s, i) => (
+                <span key={i} className="text-[10px] font-bold tracking-[1px] text-[#c0c0c0] bg-[#f5f5f5] px-[5px] py-[1px]">
+                  {SOCIAL_ICONS[s.icon] ?? s.icon.toUpperCase()}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center gap-[12px] shrink-0">
+          {/* Artworks count */}
+          <div className="flex items-center gap-[5px] text-[#c0c0c0]">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h15A1.5 1.5 0 0 1 19 3.5v13a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 1 16.5v-13ZM3 5v10l4-4 3 3 4-5 3 3.5V5H3Z" />
+            </svg>
+            <span className="text-[13px] font-bold tracking-[0.5px]">{artworks.length}</span>
           </div>
-        )}
+
+          <span className="w-px h-[20px] bg-[#ebebeb] shrink-0" />
+
+          {/* Views */}
+          <div className="flex items-center gap-[5px] text-[#c0c0c0]">
+            <EyeIcon />
+            <span className="text-[13px] font-bold tracking-[0.5px]">{totalViews}</span>
+          </div>
+        </div>
+
+        <span className="w-px h-[32px] bg-[#ebebeb] shrink-0" />
+
+        {/* Edit */}
+        <button
+          onClick={onEdit}
+          className="shrink-0 w-[16px] h-[16px] flex items-center justify-center text-[#c0c0c0] hover:text-[#808080] transition-colors"
+          title="Edit"
+        >
+          <svg width="16" height="16" viewBox="0 0 20 19.9025" fill="none">
+            <path d="M12.4365 3.32148L16.5049 7.38989L6.20657 17.6883L2.14042 13.6198L12.4365 3.32148ZM19.5921 2.34027L17.7777 0.525894C17.0765 -0.175298 15.938 -0.175298 15.2344 0.525894L13.4964 2.26388L17.5648 6.33233L19.5921 4.30507C20.136 3.76118 20.136 2.88411 19.5921 2.34027ZM0.0113215 19.3383C-0.0627191 19.6716 0.238132 19.9701 0.571391 19.8891L5.105 18.7899L1.03885 14.7215L0.0113215 19.3383Z" fill="currentColor" />
+          </svg>
+        </button>
+
+        {/* Delete */}
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="shrink-0 flex items-center gap-[5px] text-text-light hover:text-[#F87777] transition-colors disabled:opacity-40"
+          title="Delete"
+        >
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" clipRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" />
+          </svg>
+          <span className="text-[12px] font-medium tracking-wide">{t("delete")}</span>
+        </button>
       </div>
 
-      {/* Edit */}
-      <button
-        onClick={onEdit}
-        className="shrink-0 w-[16px] h-[16px] flex items-center justify-center text-[#c0c0c0] hover:text-[#808080] transition-colors"
-        title="Edit"
-      >
-        <svg width="16" height="16" viewBox="0 0 20 19.9025" fill="none">
-          <path d="M12.4365 3.32148L16.5049 7.38989L6.20657 17.6883L2.14042 13.6198L12.4365 3.32148ZM19.5921 2.34027L17.7777 0.525894C17.0765 -0.175298 15.938 -0.175298 15.2344 0.525894L13.4964 2.26388L17.5648 6.33233L19.5921 4.30507C20.136 3.76118 20.136 2.88411 19.5921 2.34027ZM0.0113215 19.3383C-0.0627191 19.6716 0.238132 19.9701 0.571391 19.8891L5.105 18.7899L1.03885 14.7215L0.0113215 19.3383Z" fill="currentColor" />
-        </svg>
-      </button>
-
-      {/* Delete */}
-      <button
-        onClick={handleDelete}
-        disabled={deleting}
-        className="shrink-0 flex items-center gap-[5px] text-text-light hover:text-[#F87777] transition-colors disabled:opacity-40"
-        title="Delete"
-      >
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" clipRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" />
-        </svg>
-        <span className="text-[12px] font-medium tracking-wide">{t("delete")}</span>
-      </button>
+      {/* Bottom row — artwork thumbnails + placeholders */}
+      <div ref={thumbsRef} className="grid gap-[10px] p-[10px] bg-[#ebebeb] overflow-y-auto" style={{ gridTemplateColumns: `repeat(${slotsPerRow}, 1fr)`, maxHeight: 20 + itemSize * 2 + 10 }}>
+        {Array.from({ length: slotCount }, (_, i) => {
+          const artwork = artworks[i];
+          if (artwork) {
+            return (
+              <button
+                key={artwork.id}
+                onClick={(e) => { e.stopPropagation(); onArtworkClick(artwork); }}
+                className="relative aspect-square overflow-hidden bg-[#f0f0f0] hover:brightness-75 transition-all"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={artwork.thumbnail || artwork.image}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            );
+          }
+          if (i === artworks.length) {
+            return (
+              <button
+                key="add-artwork"
+                onClick={onCreateArtwork}
+                className="aspect-square border-2 border-dashed border-[#c0c0c0] flex items-center justify-center text-[#c0c0c0] hover:border-[#808080] hover:text-[#808080] transition-colors"
+              >
+                <svg width="24" height="24" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 1v14M1 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </button>
+            );
+          }
+          return (
+            <div
+              key={`placeholder-${i}`}
+              className="aspect-square border border-dashed border-[#c0c0c0]"
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function CoworkerRow({ coworker, onEdit, onDeleted }: {
+function CoworkerRow({ coworker, onEdit, onDeleted, artworks, onArtworkClick, totalViews }: {
   coworker: Coworker;
   onEdit: () => void;
   onDeleted: (id: string) => void;
+  artworks: Artwork[];
+  onArtworkClick: (artwork: Artwork) => void;
+  totalViews: number;
 }) {
   const t = useTranslations("admin");
   const [deleting, setDeleting] = useState(false);
@@ -409,60 +507,133 @@ function CoworkerRow({ coworker, onEdit, onDeleted }: {
     }
   };
 
+  const thumbsRef = React.useRef<HTMLDivElement>(null);
+  const [slotsPerRow, setSlotsPerRow] = React.useState(4);
+  const [itemSize, setItemSize] = React.useState(104);
+
+  React.useEffect(() => {
+    const el = thumbsRef.current;
+    if (!el) return;
+    const gap = 10, pad = 10, minItem = 90;
+    const update = () => {
+      const available = el.clientWidth - pad * 2;
+      const cols = Math.floor((available + gap) / (minItem + gap)) || 1;
+      const size = (available - (cols - 1) * gap) / cols;
+      setSlotsPerRow(cols);
+      setItemSize(Math.floor(size));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const rows = Math.max(1, Math.ceil(artworks.length / slotsPerRow));
+  const slotCount = rows * slotsPerRow;
+
   return (
-    <div className="flex items-center gap-[16px] bg-white px-[16px] py-[12px]">
-      <div className="relative w-[52px] h-[52px] shrink-0 rounded-full overflow-hidden bg-[#f0f0f0] flex items-center justify-center">
-        {coworker.avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={coworker.avatar} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <span className="text-[18px] font-bold text-[#c0c0c0]">
-            {coworker.name.charAt(0).toUpperCase()}
-          </span>
-        )}
-      </div>
+    <div className="bg-[#ebebeb]">
+      {/* Top row — info + actions */}
+      <div className="flex items-center gap-[16px] px-[16px] py-[12px] bg-white">
+        <div className="relative w-[52px] h-[52px] shrink-0 rounded-full overflow-hidden bg-[#f0f0f0] flex items-center justify-center">
+          {coworker.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={coworker.avatar} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[18px] font-bold text-[#c0c0c0]">
+              {coworker.name.charAt(0).toUpperCase()}
+            </span>
+          )}
+        </div>
 
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-bold tracking-[1.5px] text-[#808080] uppercase truncate">
-          {coworker.name}
-        </p>
-        {coworker.role && (
-          <p className="text-[12px] font-medium tracking-[1.2px] text-[#c0c0c0] uppercase mt-[2px] truncate">
-            {coworker.role}
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold tracking-[1.5px] text-[#808080] uppercase truncate">
+            {coworker.name}
           </p>
-        )}
-        {coworker.socials && coworker.socials.length > 0 && (
-          <div className="flex gap-[6px] mt-[4px]">
-            {coworker.socials.map((s, i) => (
-              <span key={i} className="text-[10px] font-bold tracking-[1px] text-[#c0c0c0] bg-[#f5f5f5] px-[5px] py-[1px]">
-                {SOCIAL_ICONS[s.icon] ?? s.icon.toUpperCase()}
-              </span>
-            ))}
+          {coworker.role && (
+            <p className="text-[12px] font-medium tracking-[1.2px] text-[#c0c0c0] uppercase mt-[2px] truncate">
+              {coworker.role}
+            </p>
+          )}
+          {coworker.socials && coworker.socials.length > 0 && (
+            <div className="flex gap-[6px] mt-[4px]">
+              {coworker.socials.map((s, i) => (
+                <span key={i} className="text-[10px] font-bold tracking-[1px] text-[#c0c0c0] bg-[#f5f5f5] px-[5px] py-[1px]">
+                  {SOCIAL_ICONS[s.icon] ?? s.icon.toUpperCase()}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center gap-[12px] shrink-0">
+          <div className="flex items-center gap-[5px] text-[#c0c0c0]">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h15A1.5 1.5 0 0 1 19 3.5v13a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 1 16.5v-13ZM3 5v10l4-4 3 3 4-5 3 3.5V5H3Z" />
+            </svg>
+            <span className="text-[13px] font-bold tracking-[0.5px]">{artworks.length}</span>
           </div>
-        )}
+          <span className="w-px h-[20px] bg-[#ebebeb] shrink-0" />
+          <div className="flex items-center gap-[5px] text-[#c0c0c0]">
+            <EyeIcon />
+            <span className="text-[13px] font-bold tracking-[0.5px]">{totalViews}</span>
+          </div>
+        </div>
+
+        <span className="w-px h-[32px] bg-[#ebebeb] shrink-0" />
+
+        <button
+          onClick={onEdit}
+          className="shrink-0 w-[16px] h-[16px] flex items-center justify-center text-[#c0c0c0] hover:text-[#808080] transition-colors"
+          title="Edit"
+        >
+          <svg width="16" height="16" viewBox="0 0 20 19.9025" fill="none">
+            <path d="M12.4365 3.32148L16.5049 7.38989L6.20657 17.6883L2.14042 13.6198L12.4365 3.32148ZM19.5921 2.34027L17.7777 0.525894C17.0765 -0.175298 15.938 -0.175298 15.2344 0.525894L13.4964 2.26388L17.5648 6.33233L19.5921 4.30507C20.136 3.76118 20.136 2.88411 19.5921 2.34027ZM0.0113215 19.3383C-0.0627191 19.6716 0.238132 19.9701 0.571391 19.8891L5.105 18.7899L1.03885 14.7215L0.0113215 19.3383Z" fill="currentColor" />
+          </svg>
+        </button>
+
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className="shrink-0 flex items-center gap-[5px] text-text-light hover:text-[#F87777] transition-colors disabled:opacity-40"
+          title="Delete"
+        >
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" clipRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" />
+          </svg>
+          <span className="text-[12px] font-medium tracking-wide">{t("delete")}</span>
+        </button>
       </div>
 
-      <button
-        onClick={onEdit}
-        className="shrink-0 w-[16px] h-[16px] flex items-center justify-center text-[#c0c0c0] hover:text-[#808080] transition-colors"
-        title="Edit"
-      >
-        <svg width="16" height="16" viewBox="0 0 20 19.9025" fill="none">
-          <path d="M12.4365 3.32148L16.5049 7.38989L6.20657 17.6883L2.14042 13.6198L12.4365 3.32148ZM19.5921 2.34027L17.7777 0.525894C17.0765 -0.175298 15.938 -0.175298 15.2344 0.525894L13.4964 2.26388L17.5648 6.33233L19.5921 4.30507C20.136 3.76118 20.136 2.88411 19.5921 2.34027ZM0.0113215 19.3383C-0.0627191 19.6716 0.238132 19.9701 0.571391 19.8891L5.105 18.7899L1.03885 14.7215L0.0113215 19.3383Z" fill="currentColor" />
-        </svg>
-      </button>
-
-      <button
-        onClick={handleDelete}
-        disabled={deleting}
-        className="shrink-0 flex items-center gap-[5px] text-text-light hover:text-[#F87777] transition-colors disabled:opacity-40"
-        title="Delete"
-      >
-        <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" clipRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" />
-        </svg>
-        <span className="text-[12px] font-medium tracking-wide">{t("delete")}</span>
-      </button>
+      {/* Bottom row — artwork thumbnails */}
+      <div ref={thumbsRef} className="grid gap-[10px] p-[10px] bg-[#ebebeb] overflow-y-auto" style={{ gridTemplateColumns: `repeat(${slotsPerRow}, 1fr)`, maxHeight: 20 + itemSize * 2 + 10 }}>
+        {Array.from({ length: slotCount }, (_, i) => {
+          const artwork = artworks[i];
+          if (artwork) {
+            return (
+              <button
+                key={artwork.id}
+                onClick={(e) => { e.stopPropagation(); onArtworkClick(artwork); }}
+                className="relative aspect-square overflow-hidden bg-[#f0f0f0] hover:brightness-75 transition-all"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={artwork.thumbnail || artwork.image}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              </button>
+            );
+          }
+          return (
+            <div
+              key={`placeholder-${i}`}
+              className="aspect-square border border-dashed border-[#c0c0c0]"
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -740,21 +911,387 @@ function SortableCategoryRow({
   );
 }
 
+/* ── Contact Views Chart ─────────────────────────────────────────── */
+
+type CVPeriod = "day" | "week" | "month" | "year";
+type CVBucket = { label: string; count: number };
+type CVContact = { id: string; name: string; totalViews: number; buckets: CVBucket[] };
+const CV_PERIODS: CVPeriod[] = ["day", "week", "month", "year"];
+const CV_CHART_H = 160;
+const CV_LABEL_H = 16;
+const CV_Y_LABEL_W = 32;
+const CV_COLORS = ["#81AB41", "#E8913A", "#5B8DEF", "#E85B8D", "#8B5CF6", "#14B8A6", "#F59E0B", "#EF4444"];
+
+function ContactViewsChart() {
+  const t = useTranslations("admin");
+  const [mounted, setMounted] = useState(false);
+  const [period, setPeriod] = useState<CVPeriod>("week");
+  const [data, setData] = useState<CVContact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [chartW, setChartW] = useState(600);
+
+  useEffect(() => setMounted(true), []);
+
+  useLayoutEffect(() => {
+    const el = chartRef.current;
+    if (!el) return;
+    setChartW(el.clientWidth);
+    const ro = new ResizeObserver(() => setChartW(el.clientWidth));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("[data-cv-sidebar]") || target.closest("[data-cv-periods]")) return;
+      setSelectedId(null);
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, [selectedId]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/stats/views-by-contact?period=${period}`)
+      .then((r) => r.json())
+      .then((d: { contacts: CVContact[] }) => { setData(d.contacts); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [period]);
+
+  const selected = selectedId ? data.find((c) => c.id === selectedId) : null;
+  const chartData = selected ? [selected] : data.slice(0, 3);
+  const total = data.reduce((s, c) => s + c.totalViews, 0);
+  const n = chartData.length > 0 ? chartData[0].buckets.length : 0;
+  const gap = n > 20 ? 2 : n > 10 ? 3 : 6;
+  const barW = n > 0 ? Math.max(1, (chartW - gap * (n - 1)) / n) : 0;
+  const labelEvery = n <= 12 ? 1 : n <= 24 ? 2 : 5;
+
+  // Global max across all contacts
+  const globalMax = Math.max(
+    ...chartData.flatMap((c) => c.buckets.map((b) => b.count)),
+    1,
+  );
+
+  const peakY = (count: number) =>
+    CV_CHART_H - Math.max(count > 0 ? 2 : 0, Math.round((count / globalMax) * CV_CHART_H));
+
+  const makePoints = (buckets: CVBucket[]) =>
+    buckets.map((b, i) => `${i * (barW + gap) + barW / 2},${peakY(b.count)}`).join(" ");
+
+  const makeFillPath = (buckets: CVBucket[]) => {
+    if (buckets.length < 2) return "";
+    const firstCx = barW / 2;
+    const lastCx = (buckets.length - 1) * (barW + gap) + barW / 2;
+    const pts = buckets.map((b, i) => `${i * (barW + gap) + barW / 2},${peakY(b.count)}`).join(" L ");
+    return `M ${firstCx},${CV_CHART_H} L ${pts} L ${lastCx},${CV_CHART_H} Z`;
+  };
+
+  const gridLevels = [1 / 3, 2 / 3, 1].map((frac) => ({
+    frac,
+    svgY: CV_CHART_H - Math.round(frac * CV_CHART_H),
+    pxY: (1 - frac) * CV_CHART_H,
+    value: Math.round(frac * globalMax),
+  }));
+
+  const labels = chartData.length > 0 ? chartData[0].buckets : [];
+
+  const verticalXs = labels
+    .map((_, i) => (i % labelEvery === 0 ? i * (barW + gap) + barW / 2 : null))
+    .filter((x): x is number => x !== null);
+  const vBandEdges = [0, ...verticalXs, chartW];
+  const vBands = vBandEdges.slice(0, -1).map((x1, i) => ({ x1, x2: vBandEdges[i + 1], fill: i % 2 === 0 }));
+
+  const handleMouseMove = (e: React.MouseEvent<SVGRectElement>) => {
+    const svgEl = e.currentTarget.closest("svg")!;
+    const rect = svgEl.getBoundingClientRect();
+    const svgX = (e.clientX - rect.left) * (chartW / rect.width);
+    const idx = Math.max(0, Math.min(n - 1, Math.round((svgX - barW / 2) / (barW + gap))));
+    setHoveredIdx(idx);
+  };
+
+  const hoveredCx = hoveredIdx !== null ? hoveredIdx * (barW + gap) + barW / 2 : 0;
+
+  if (!mounted) return null;
+
+  return (
+    <div className="border border-[#e0e0e0] mb-[4px] overflow-hidden">
+      <div className="flex max-h-[260px]">
+        {/* Chart section */}
+        <div className="w-2/3 min-w-0 px-[20px] py-[16px]">
+          {/* Total + period switcher */}
+          <div className="flex items-baseline justify-between mb-[16px]">
+            <div className="flex items-baseline gap-[8px]">
+              <span className="text-[26px] font-bold tracking-tight text-[#808080]">
+                {loading ? "—" : total.toLocaleString()}
+              </span>
+              <span className="text-[12px] font-bold tracking-[2px] uppercase text-[#c0c0c0]">
+                VIEWS BY CLIENTS
+              </span>
+            </div>
+            <div className="flex items-center gap-[12px]" data-cv-periods>
+              {CV_PERIODS.map((p, i) => (
+                <React.Fragment key={p}>
+                  {i > 0 && <span className="w-px h-[1em] bg-[#c0c0c0]/40 self-center" />}
+                  <button
+                    onClick={() => setPeriod(p)}
+                    className={`text-[12px] font-bold tracking-[1.8px] uppercase transition-colors ${
+                      period === p ? "text-[#808080]" : "text-[#c0c0c0] hover:text-[#808080]"
+                    }`}
+                  >
+                    {t(`period.${p}`)}
+                  </button>
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+
+          {/* Chart */}
+          {loading ? (
+            <div style={{ height: CV_CHART_H + CV_LABEL_H + 4 }} className="flex items-center justify-center">
+              <span className="text-[12px] text-[#c0c0c0] tracking-[2px] uppercase animate-pulse">...</span>
+            </div>
+          ) : (
+            <div className="flex">
+              {/* Y-axis labels */}
+              <div className="relative shrink-0" style={{ width: CV_Y_LABEL_W, height: CV_CHART_H }}>
+                {gridLevels.map(({ frac, pxY, value }) => (
+                  <span
+                    key={frac}
+                    className="absolute right-[6px] text-[12px] font-bold text-[#c0c0c0] leading-none -translate-y-1/2"
+                    style={{ top: pxY }}
+                  >
+                    {value}
+                  </span>
+                ))}
+              </div>
+
+              {/* Chart area */}
+              <div className="flex-1 min-w-0 relative" ref={chartRef}>
+                <svg
+                  viewBox={`0 0 ${chartW} ${CV_CHART_H}`}
+                  width="100%"
+                  preserveAspectRatio="none"
+                  overflow="visible"
+                  style={{ display: "block", height: CV_CHART_H }}
+                >
+                  <defs>
+                    {chartData.map((contact, ci) => (
+                      <linearGradient
+                        key={contact.id}
+                        id={`cvFill-${ci}`}
+                        x1="0" y1="0" x2="0" y2={CV_CHART_H}
+                        gradientUnits="userSpaceOnUse"
+                      >
+                        <stop offset="0%" stopColor={CV_COLORS[ci % CV_COLORS.length]} stopOpacity="0.15" />
+                        <stop offset="100%" stopColor={CV_COLORS[ci % CV_COLORS.length]} stopOpacity="0" />
+                      </linearGradient>
+                    ))}
+                  </defs>
+
+                  {vBands.filter((b) => b.fill).map((b, i) => (
+                    <rect key={i} x={b.x1} y={0} width={b.x2 - b.x1} height={CV_CHART_H} fill="#808080" fillOpacity="0.06" />
+                  ))}
+
+                  {gridLevels.map(({ frac, svgY }) => (
+                    <line key={frac} x1={0} y1={svgY} x2={chartW} y2={svgY} stroke="#e0e0e0" strokeWidth="1" strokeDasharray="2 3" />
+                  ))}
+
+                  {labels.map((_, i) => {
+                    if (i % labelEvery !== 0) return null;
+                    const cx = i * (barW + gap) + barW / 2;
+                    return <line key={i} x1={cx} y1={0} x2={cx} y2={CV_CHART_H} stroke="#e0e0e0" strokeWidth="0.5" />;
+                  })}
+
+                  {/* Fill + polyline per contact */}
+                  {chartData.map((contact, ci) => {
+                    const color = CV_COLORS[ci % CV_COLORS.length];
+                    const fillPath = makeFillPath(contact.buckets);
+                    const points = makePoints(contact.buckets);
+                    return (
+                      <React.Fragment key={contact.id}>
+                        {fillPath && <path d={fillPath} fill={`url(#cvFill-${ci})`} />}
+                        {contact.buckets.length > 1 && (
+                          <polyline
+                            points={points}
+                            fill="none"
+                            stroke={color}
+                            strokeWidth="2"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                            vectorEffect="non-scaling-stroke"
+                          />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+
+                  {/* Hover vertical line */}
+                  {hoveredIdx !== null && (
+                    <line x1={hoveredCx} y1={0} x2={hoveredCx} y2={CV_CHART_H} stroke="#c0c0c0" strokeWidth="1" />
+                  )}
+
+                  <rect
+                    x={0} y={0} width={chartW} height={CV_CHART_H}
+                    fill="transparent"
+                    style={{ cursor: "crosshair" }}
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={() => setHoveredIdx(null)}
+                  />
+                </svg>
+
+                {/* Dots on lines */}
+                {hoveredIdx !== null && chartData.map((contact, ci) => {
+                  const val = contact.buckets[hoveredIdx]?.count ?? 0;
+                  if (val === 0) return null;
+                  const cy = peakY(val);
+                  return (
+                    <div
+                      key={contact.id}
+                      className="absolute pointer-events-none z-10"
+                      style={{
+                        left: `${(hoveredCx / chartW) * 100}%`,
+                        top: cy,
+                        transform: "translate(-50%, -50%)",
+                      }}
+                    >
+                      <div className="w-[8px] h-[8px] rounded-full" style={{ background: CV_COLORS[ci % CV_COLORS.length] }} />
+                    </div>
+                  );
+                })}
+
+                {/* Tooltip */}
+                {hoveredIdx !== null && chartData.length > 0 && (
+                  <div
+                    className="absolute pointer-events-none z-10"
+                    style={{
+                      left: `${(hoveredCx / chartW) * 100}%`,
+                      top: 0,
+                      transform: "translateX(-50%)",
+                    }}
+                  >
+                    <div className="bg-white text-[11px] font-bold tracking-[1px] px-[10px] py-[6px] shadow-[0_2px_12px_rgba(0,0,0,0.10)] whitespace-nowrap mt-[4px]">
+                      <div className="text-[#c0c0c0] mb-[4px]">{labels[hoveredIdx]?.label}</div>
+                      {chartData.map((contact, ci) => {
+                        const val = contact.buckets[hoveredIdx]?.count ?? 0;
+                        if (val === 0) return null;
+                        return (
+                          <div key={contact.id} className="flex items-center gap-[6px]">
+                            <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: CV_COLORS[ci % CV_COLORS.length] }} />
+                            <span className="text-[#808080]">{contact.name}</span>
+                            <span className="text-[#808080] ml-auto pl-[8px]">{val}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* X-axis labels */}
+                <div className="relative mt-[4px]" style={{ height: CV_LABEL_H }}>
+                  {labels.map((b, i) => {
+                    if (i % labelEvery !== 0) return null;
+                    const pct = ((i * (barW + gap) + barW / 2) / chartW) * 100;
+                    return (
+                      <span
+                        key={i}
+                        className="absolute text-[12px] font-bold tracking-[1.8px] uppercase text-[#c0c0c0] -translate-x-1/2 leading-none"
+                        style={{ left: `${pct}%`, top: 0 }}
+                      >
+                        {b.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Top clients sidebar */}
+        <div className="w-px bg-[#e0e0e0] shrink-0" />
+        <div className="w-1/3 shrink-0 px-[16px] py-[16px] flex flex-col overflow-hidden" data-cv-sidebar>
+          <div className="text-[12px] font-bold tracking-[2px] uppercase text-[#c0c0c0] mb-[12px] shrink-0">
+            TOP CLIENTS
+          </div>
+          <div className="overflow-y-auto min-h-0 flex-1">
+            {loading ? (
+              <span className="text-[12px] text-[#c0c0c0] animate-pulse">...</span>
+            ) : data.length === 0 ? (
+              <span className="text-[12px] text-[#c0c0c0]">—</span>
+            ) : (
+              <div className="flex flex-col">
+                {data.map((contact, ci) => {
+                  const isSelected = selectedId === contact.id;
+                  const color = isSelected ? CV_COLORS[0] : CV_COLORS[ci % CV_COLORS.length];
+                  return (
+                    <button
+                      key={contact.id}
+                      onClick={() => setSelectedId(isSelected ? null : contact.id)}
+                      className={`flex items-center gap-[6px] text-left transition-opacity py-[6px] ${
+                        ci > 0 ? "border-t border-[#e0e0e0]" : ""
+                      } ${selectedId && !isSelected ? "opacity-40" : ""}`}
+                    >
+                      <span className="text-[11px] font-bold text-[#c0c0c0] tabular-nums w-[16px] text-right shrink-0">{ci + 1}</span>
+                      <span className="w-px h-[12px] bg-[#e0e0e0] shrink-0" />
+                      <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="#c0c0c0">
+                        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                        <path fillRule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z" clipRule="evenodd" />
+                      </svg>
+                      <span className="text-[12px] font-bold text-[#c0c0c0] tabular-nums min-w-[24px] text-right shrink-0">{contact.totalViews}</span>
+                      <span
+                        className="w-[8px] h-[8px] rounded-full shrink-0"
+                        style={{ background: color }}
+                      />
+                      <span className="text-[12px] font-bold text-[#808080] truncate">{contact.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CabinetPage() {
   const { isAdmin } = useAdmin();
   const router = useRouter();
   const locale = useLocale() as "ru" | "en";
   const t = useTranslations("admin");
 
-  const [activeSection, setActiveSection] = useState<string | null>("statistic");
+  const [activeSection, setActiveSectionRaw] = useState<string | null>("statistic");
+  const [sectionRestored, setSectionRestored] = useState(false);
+  useEffect(() => {
+    if (sectionRestored) return;
+    const saved = sessionStorage.getItem("cabinet-section");
+    if (saved) setActiveSectionRaw(saved);
+    setSectionRestored(true);
+  }, [sectionRestored]);
+  const setActiveSection = (s: string | null) => {
+    setActiveSectionRaw(s);
+    if (typeof window !== "undefined") {
+      if (s) sessionStorage.setItem("cabinet-section", s);
+      else sessionStorage.removeItem("cabinet-section");
+    }
+  };
   const [sortBy, setSortBy] = useState<"popularity" | "date" | "category">("date");
   const [viewCounts, setViewCounts] = useState<Record<string, { total: number; recent: number }>>({});
   const [dynamicArtworks, setDynamicArtworks] = useState<Artwork[]>([]);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
   const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
+  const [viewingArtwork, setViewingArtwork] = useState<Artwork | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [initialImageUrl, setInitialImageUrl] = useState<string | undefined>();
+  const [createForContactId, setCreateForContactId] = useState<string | undefined>();
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -783,6 +1320,14 @@ export default function CabinetPage() {
     if (!isAdmin) router.replace("/");
   }, [isAdmin, router]);
 
+  // Load categories once on mount so they're available in all sections
+  useEffect(() => {
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data: Category[]) => setCategories((prev) => prev.length === 0 ? (Array.isArray(data) ? data : []) : prev))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (activeSection !== "statistic") return;
     fetch("/api/stats")
@@ -809,6 +1354,14 @@ export default function CabinetPage() {
       .then((r) => r.json())
       .then((data: Contact[]) => setContacts(Array.isArray(data) ? data : []))
       .catch(() => {});
+    fetch("/api/artworks")
+      .then((r) => r.json())
+      .then((data: Artwork[]) => setDynamicArtworks(data))
+      .catch(() => {});
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((data: Record<string, number>) => setViewCounts(data))
+      .catch(() => {});
   }, [activeSection]);
 
   useEffect(() => {
@@ -816,6 +1369,14 @@ export default function CabinetPage() {
     fetch("/api/coworkers")
       .then((r) => r.json())
       .then((data: Coworker[]) => setCoworkers(Array.isArray(data) ? data : []))
+      .catch(() => {});
+    fetch("/api/artworks")
+      .then((r) => r.json())
+      .then((data: Artwork[]) => setDynamicArtworks(data))
+      .catch(() => {});
+    fetch("/api/stats")
+      .then((r) => r.json())
+      .then((data: Record<string, number>) => setViewCounts(data))
       .catch(() => {});
   }, [activeSection]);
 
@@ -1013,6 +1574,7 @@ export default function CabinetPage() {
             {sortBy === "category" ? (
               <div className="flex flex-col gap-[32px]">
                 <AddArtworkButton onClick={() => openCreate()} label={t("addArtwork")} onDropImage={(url) => openCreate(url)} />
+                <div style={{ height: 5 }} />
                 {groupedByCategory.map((group, gi) => (
                   <div key={group.category}>
                     {/* Section header */}
@@ -1046,6 +1608,7 @@ export default function CabinetPage() {
             ) : (
               <div className="flex flex-col gap-[4px]">
                 <AddArtworkButton onClick={() => openCreate()} label={t("addArtwork")} onDropImage={(url) => openCreate(url)} />
+                <div style={{ height: 5 }} />
                 {sortedArtworks.map((artwork) => (
                   <ArtworkStatRow
                     key={artwork.id}
@@ -1081,6 +1644,8 @@ export default function CabinetPage() {
             style={{ paddingTop: 148 + 24, paddingBottom: 24, paddingRight: 24 }}
           >
             <div className="flex flex-col gap-[4px]">
+              <ContactViewsChart />
+
               {/* Add button — spans full width */}
               <button
                 onClick={() => setIsCreatingContact(true)}
@@ -1092,26 +1657,43 @@ export default function CabinetPage() {
                 <span className="text-[12px] font-bold tracking-[1.8px] uppercase">{t("addContact")}</span>
               </button>
 
+              <div style={{ height: 5 }} />
+
               {contacts.length === 0 && (
                 <p className="text-center text-[12px] text-[#c0c0c0] py-[32px] tracking-[1.5px] uppercase">—</p>
               )}
 
-              {contacts.map((contact, i) => i % 2 === 0 && (
-                <div key={contact.id} className="grid grid-cols-2 gap-[4px]">
-                  <ContactRow
-                    contact={contact}
-                    onEdit={() => setEditingContact(contact)}
-                    onDeleted={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))}
-                  />
-                  {contacts[i + 1] && (
+              {contacts.map((contact, i) => {
+                if (i % 2 !== 0) return null;
+                const getArtworks = (c: Contact) =>
+                  allArtworks.filter((a) => a.contactId === c.id);
+                const getViews = (c: Contact) =>
+                  getArtworks(c).reduce((sum, a) => sum + (viewCounts[a.id]?.total ?? 0), 0);
+                return (
+                  <div key={contact.id} className="grid grid-cols-2 gap-[4px]">
                     <ContactRow
-                      contact={contacts[i + 1]}
-                      onEdit={() => setEditingContact(contacts[i + 1])}
+                      contact={contact}
+                      onEdit={() => setEditingContact(contact)}
                       onDeleted={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))}
+                      artworks={getArtworks(contact)}
+                      onArtworkClick={(a) => setViewingArtwork(a)}
+                      onCreateArtwork={() => { setCreateForContactId(contact.id); setIsCreating(true); }}
+                      totalViews={getViews(contact)}
                     />
-                  )}
-                </div>
-              ))}
+                    {contacts[i + 1] && (
+                      <ContactRow
+                        contact={contacts[i + 1]}
+                        onEdit={() => setEditingContact(contacts[i + 1])}
+                        onDeleted={(id) => setContacts((prev) => prev.filter((c) => c.id !== id))}
+                        artworks={getArtworks(contacts[i + 1])}
+                        onArtworkClick={(a) => setViewingArtwork(a)}
+                        onCreateArtwork={() => { setCreateForContactId(contacts[i + 1].id); setIsCreating(true); }}
+                        totalViews={getViews(contacts[i + 1])}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </motion.div>
         )}
@@ -1140,26 +1722,41 @@ export default function CabinetPage() {
                 <span className="text-[12px] font-bold tracking-[1.8px] uppercase">{t("addCoworker")}</span>
               </button>
 
+              <div style={{ height: 5 }} />
+
               {coworkers.length === 0 && (
                 <p className="text-center text-[12px] text-[#c0c0c0] py-[32px] tracking-[1.5px] uppercase">—</p>
               )}
 
-              {coworkers.map((coworker, i) => i % 2 === 0 && (
-                <div key={coworker.id} className="grid grid-cols-2 gap-[4px]">
-                  <CoworkerRow
-                    coworker={coworker}
-                    onEdit={() => setEditingCoworker(coworker)}
-                    onDeleted={(id) => setCoworkers((prev) => prev.filter((c) => c.id !== id))}
-                  />
-                  {coworkers[i + 1] && (
+              {coworkers.map((coworker, i) => {
+                if (i % 2 !== 0) return null;
+                const getArtworks = (cw: Coworker) =>
+                  allArtworks.filter((a) => a.coworkers?.some((c) => c.id === cw.id));
+                const getViews = (cw: Coworker) =>
+                  getArtworks(cw).reduce((sum, a) => sum + (viewCounts[a.id]?.total ?? 0), 0);
+                return (
+                  <div key={coworker.id} className="grid grid-cols-2 gap-[4px]">
                     <CoworkerRow
-                      coworker={coworkers[i + 1]}
-                      onEdit={() => setEditingCoworker(coworkers[i + 1])}
+                      coworker={coworker}
+                      onEdit={() => setEditingCoworker(coworker)}
                       onDeleted={(id) => setCoworkers((prev) => prev.filter((c) => c.id !== id))}
+                      artworks={getArtworks(coworker)}
+                      onArtworkClick={(a) => setViewingArtwork(a)}
+                      totalViews={getViews(coworker)}
                     />
-                  )}
-                </div>
-              ))}
+                    {coworkers[i + 1] && (
+                      <CoworkerRow
+                        coworker={coworkers[i + 1]}
+                        onEdit={() => setEditingCoworker(coworkers[i + 1])}
+                        onDeleted={(id) => setCoworkers((prev) => prev.filter((c) => c.id !== id))}
+                        artworks={getArtworks(coworkers[i + 1])}
+                        onArtworkClick={(a) => setViewingArtwork(a)}
+                        totalViews={getViews(coworkers[i + 1])}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </motion.div>
         )}
@@ -1219,6 +1816,8 @@ export default function CabinetPage() {
                 <span className="text-[12px] font-bold tracking-[1.8px] uppercase">{t("addCategory")}</span>
               </button>
 
+              <div style={{ height: 5 }} />
+
               {categories.length === 0 && (
                 <p className="text-center text-[12px] text-[#c0c0c0] py-[32px] tracking-[1.5px] uppercase">—</p>
               )}
@@ -1274,10 +1873,12 @@ export default function CabinetPage() {
             category={categories.length > 0 ? categories[0].id : "personal"}
             categories={categories}
             initialImageUrl={initialImageUrl}
-            onClose={() => setIsCreating(false)}
+            initialContactId={createForContactId}
+            onClose={() => { setIsCreating(false); setCreateForContactId(undefined); }}
             onSaved={(created) => {
               setDynamicArtworks((prev) => [...prev, created]);
               setIsCreating(false);
+              setCreateForContactId(undefined);
             }}
           />
         )}
@@ -1387,6 +1988,20 @@ export default function CabinetPage() {
               setCategories(updated);
               setCatModalMode(null);
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Artwork viewing modal (from contact thumbnails) */}
+      <AnimatePresence>
+        {viewingArtwork && (
+          <ArtworkModal
+            key={viewingArtwork.id}
+            artwork={viewingArtwork}
+            onClose={() => setViewingArtwork(null)}
+            onEdit={() => { setEditingArtwork(viewingArtwork); setViewingArtwork(null); }}
+            isHidden={hiddenIds.has(viewingArtwork.id)}
+            onToggleHidden={() => handleToggleHidden(viewingArtwork.id)}
           />
         )}
       </AnimatePresence>

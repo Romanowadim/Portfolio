@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readDynamicArtworks, writeDynamicArtworks } from "@/lib/blob";
+import { readDynamicArtworks, writeDynamicArtworks, readContacts } from "@/lib/blob";
 import { extractChannel, format } from "@/lib/youtube";
 
 export const runtime = "nodejs";
@@ -19,11 +19,18 @@ export async function GET(req: NextRequest) {
   }
 
   const artworks = await readDynamicArtworks();
+  const contacts = await readContacts();
+
+  // Resolve YouTube URL: from linked contact or inline clientSocials
+  const getYoutubeUrl = (a: (typeof artworks)[number]): string | undefined => {
+    const socials = a.contactId
+      ? contacts.find((c) => c.id === a.contactId)?.clientSocials
+      : a.clientSocials;
+    return socials?.find((s) => s.icon === "youtube" && s.url)?.url;
+  };
 
   const targets = artworks.filter(
-    (a) =>
-      a.category === "youtube" &&
-      a.clientSocials?.some((s) => s.icon === "youtube" && s.url)
+    (a) => a.category === "youtube" && getYoutubeUrl(a)
   );
 
   let updated = 0;
@@ -31,8 +38,8 @@ export async function GET(req: NextRequest) {
   const details: { id: string; status: "ok" | "error"; subscribers?: string; error?: string }[] = [];
 
   for (const artwork of targets) {
-    const social = artwork.clientSocials!.find((s) => s.icon === "youtube" && s.url)!;
-    const channel = extractChannel(social.url);
+    const youtubeUrl = getYoutubeUrl(artwork)!;
+    const channel = extractChannel(youtubeUrl);
 
     if (!channel) {
       errors++;

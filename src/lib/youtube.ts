@@ -11,6 +11,14 @@ export function extractChannel(url: string): { type: "id" | "handle"; value: str
     if (channelMatch) return { type: "id", value: channelMatch[1] };
     const handleMatch = path.match(/\/@([\w.-]+)/);
     if (handleMatch) return { type: "handle", value: handleMatch[1] };
+    // /c/CustomName or /user/Username
+    const customMatch = path.match(/\/(?:c|user)\/([\w.-]+)/);
+    if (customMatch) return { type: "handle", value: customMatch[1] };
+    // Bare /Username (single path segment, not a known route)
+    const bareMatch = path.match(/^\/([\w.-]{2,})$/);
+    if (bareMatch && !["feed", "watch", "playlist", "shorts", "live", "results", "premium", "gaming"].includes(bareMatch[1])) {
+      return { type: "handle", value: bareMatch[1] };
+    }
     return null;
   } catch {
     return null;

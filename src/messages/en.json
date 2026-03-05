@@ -122,7 +122,7 @@
       "category": "CATEGORY",
       "subcategory": "SUBCATEGORY",
       "year": "YEAR",
-      "hours": "WORK TIME",
+      "hours": "TIME",
       "resolution": "CANVAS SIZE",
       "tools": "PROGRAMS",
       "clientInfo": "CLIENT INFO",
@@ -145,7 +145,13 @@
       "reupload": "Upload new",
       "save": "SAVE",
       "update": "UPDATE",
-      "delete": "DELETE"
+      "delete": "DELETE",
+      "name": "NAME",
+      "uploadMainImage": "UPLOAD MAIN IMAGE",
+      "uploadSketch": "UPLOAD SKETCH VERSION",
+      "clickOrDrop": "Click or Drop to upload",
+      "optional": "(optional)",
+      "description": "DESCRIPTION"
     }
   },
   "language": {

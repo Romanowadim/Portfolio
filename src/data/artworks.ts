@@ -19,7 +19,9 @@ export type Artwork = {
   clientAvatarBg?: string;
   subscribers?: string;
   review?: { ru: string; en: string };
+  reviewType?: "review" | "description";
   clientSocials?: { icon: string; url: string }[];
+  contactId?: string; // reference to Contact.id — when set, client fields are resolved from contacts
   coworkers?: { id?: string; name: string; role?: string; avatar?: string; socials?: { icon: string; url: string }[] }[];
   createdAt?: string; // ISO date string, set when artwork is first saved via admin
 };

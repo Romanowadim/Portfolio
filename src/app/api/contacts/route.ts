@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/admin";
-import { readContacts, writeContacts } from "@/lib/blob";
+import { readContacts, writeContacts, readDynamicArtworks, writeDynamicArtworks } from "@/lib/blob";
 import type { Contact } from "@/lib/blob";
 
 export async function GET() {
@@ -45,5 +45,15 @@ export async function DELETE(req: Request) {
   }
   const { id } = await req.json();
   await writeContacts((await readContacts()).filter((c) => c.id !== id));
+
+  // Clear contactId from artworks that referenced this contact
+  const artworks = await readDynamicArtworks();
+  const updated = artworks.map((a) =>
+    a.contactId === id ? { ...a, contactId: undefined } : a
+  );
+  if (updated.some((a, i) => a !== artworks[i])) {
+    await writeDynamicArtworks(updated);
+  }
+
   return NextResponse.json({ ok: true });
 }

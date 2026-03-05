@@ -14,9 +14,10 @@ const Y_LABEL_W = 32;
 interface SingleChartProps {
   apiUrl: string;
   title: string;
+  icon?: React.ReactNode;
 }
 
-function SingleChart({ apiUrl, title }: SingleChartProps) {
+function SingleChart({ apiUrl, title, icon }: SingleChartProps) {
   const t = useTranslations("admin");
   const [period, setPeriod] = useState<Period>("week");
   const [data, setData] = useState<Bucket[]>([]);
@@ -94,7 +95,8 @@ function SingleChart({ apiUrl, title }: SingleChartProps) {
     <div className="flex-1 min-w-0">
       {/* Total + period switcher */}
       <div className="flex items-baseline justify-between mb-[16px]">
-        <div className="flex items-baseline gap-[8px]">
+        <div className="flex items-center gap-[8px]">
+          {icon && <span className="text-[#808080] flex items-center">{icon}</span>}
           <span className="text-[26px] font-bold tracking-tight text-[#808080]">
             {loading ? "—" : total.toLocaleString()}
           </span>
@@ -285,11 +287,11 @@ export default function VisitsChart() {
       {/* Two charts side by side */}
       <div className="flex border border-[#e0e0e0]">
         <div className="flex-1 min-w-0 px-[20px] py-[16px]">
-          <SingleChart apiUrl="/api/stats/visits" title={t("visits")} />
+          <SingleChart apiUrl="/api/stats/visits" title={t("visits")} icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" /></svg>} />
         </div>
         <div className="w-px bg-[#e0e0e0] shrink-0" />
         <div className="flex-1 min-w-0 px-[20px] py-[16px]">
-          <SingleChart apiUrl="/api/stats/views-chart" title={t("views")} />
+          <SingleChart apiUrl="/api/stats/views-chart" title={t("views")} icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path fillRule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z" clipRule="evenodd" /></svg>} />
         </div>
       </div>
     </div>

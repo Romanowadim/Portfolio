@@ -7,7 +7,7 @@ import { useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { Artwork } from "@/data/artworks";
 import { useAdmin } from "@/components/admin/AdminProvider";
-import type { Coworker } from "@/lib/blob";
+import type { Contact, Coworker } from "@/lib/blob";
 
 const toolInfo: Record<string, { fullName: string; since: number; file?: string; ext?: string; invert?: boolean }> = {
   photoshop:   { fullName: "Adobe Photoshop",  since: 2009 },
@@ -42,7 +42,29 @@ type Props = {
 export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext, instant, isHidden, onToggleHidden }: Props) {
   const locale = useLocale() as "ru" | "en";
   const { isAdmin } = useAdmin();
-  const isOrder = !!artwork.clientName;
+  const [contactsList, setContactsList] = useState<Contact[]>([]);
+  useEffect(() => {
+    if (artwork.contactId) {
+      fetch("/api/contacts")
+        .then((r) => r.json())
+        .then((data) => setContactsList(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    }
+  }, [artwork.contactId]);
+
+  // Resolve client data: from linked contact or inline fields
+  const resolvedContact = artwork.contactId ? contactsList.find((c) => c.id === artwork.contactId) : undefined;
+  const rc = {
+    clientName: resolvedContact?.clientName ?? artwork.clientName,
+    client: resolvedContact?.client ?? artwork.client,
+    clientRole: resolvedContact?.clientRole ?? artwork.clientRole,
+    clientAvatar: resolvedContact?.clientAvatar ?? artwork.clientAvatar,
+    clientAvatarBg: artwork.clientAvatarBg,
+    clientSocials: resolvedContact?.clientSocials ?? artwork.clientSocials,
+    subscribers: artwork.subscribers,
+  };
+
+  const isOrder = !!rc.clientName;
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [imgRatio, setImgRatio] = useState<number | null>(null);
@@ -205,18 +227,18 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
             onClick={(e) => e.stopPropagation()}
           >
             {/* Client block + Versions — above the card */}
-            {(artwork.clientName || artwork.sketch) && (
+            {(rc.clientName || artwork.sketch) && (
               <div className="flex items-start bg-white px-[67px] py-[40px] shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]">
-                {artwork.clientName && (
+                {rc.clientName && (
                   <div className="flex items-start gap-[27px]">
-                    {artwork.clientAvatar && (
+                    {rc.clientAvatar && (
                       <div
                         className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
-                        style={artwork.clientAvatarBg ? { backgroundColor: artwork.clientAvatarBg } : undefined}
+                        style={rc.clientAvatarBg ? { backgroundColor: rc.clientAvatarBg } : undefined}
                       >
                         <Image
-                          src={artwork.clientAvatar}
-                          alt={artwork.clientName}
+                          src={rc.clientAvatar}
+                          alt={rc.clientName}
                           fill
                           className="object-cover"
                           sizes="80px"
@@ -225,31 +247,31 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                     )}
                     <div className="pt-[8px]">
                       <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
-                        {artwork.clientName}
+                        {rc.clientName}
                       </h3>
-                      {(artwork.client || artwork.clientRole) && (
+                      {(rc.client || rc.clientRole) && (
                         <div className="mt-[4px]">
-                          {artwork.client && (
+                          {rc.client && (
                             <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px] uppercase">
-                              {artwork.client}
+                              {rc.client}
                             </p>
                           )}
-                          {artwork.clientRole && (
+                          {rc.clientRole && (
                             <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px]">
-                              {artwork.clientRole}
+                              {rc.clientRole}
                             </p>
                           )}
-                          {artwork.subscribers && (
+                          {rc.subscribers && (
                             <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px] mt-[4px]">
-                              {artwork.subscribers} subs
+                              {rc.subscribers} subs
                             </p>
                           )}
                         </div>
                       )}
                     </div>
-                    {artwork.clientSocials && (
+                    {rc.clientSocials && (
                       <div className="flex flex-col items-center gap-[10px] shrink-0 ml-[27px]">
-                        {artwork.clientSocials.map((social, i) => (
+                        {rc.clientSocials.map((social, i) => (
                           <a
                             key={i}
                             href={social.url}
@@ -439,17 +461,17 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                 {artwork.review && (
                   <div className="max-w-[350px]">
                     <h3 className="text-[14px] font-bold tracking-[3.2px] text-[#808080] leading-[20px]">
-                      REVIEW TO ORDER
+                      {artwork.reviewType === "description" ? "DESCRIPTION" : "REVIEW TO ORDER"}
                     </h3>
-                    <p className="mt-[16px] text-[14px] font-medium leading-[20px] text-[#787878]">
+                    <p className="mt-[16px] text-[14px] font-medium leading-[20px] text-[#787878] whitespace-pre-line break-words">
                       {artwork.review[locale]}
                     </p>
                   </div>
                 )}
 
-                {/* Coworkers (YouTube layout) */}
+                {/* Right column: Coworkers */}
                 {artwork.coworkers && artwork.coworkers.length > 0 && (
-                  <div>
+                  <div className="ml-auto shrink-0">
                     <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] leading-[20px]">
                       COWORKERS
                     </h3>
@@ -560,14 +582,14 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                 {/* Client info block (orders only) */}
                 {isOrder && (
                   <div className="flex items-start gap-[16px] mb-[40px]">
-                    {artwork.clientAvatar && (
+                    {rc.clientAvatar && (
                       <div
                         className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
-                        style={artwork.clientAvatarBg ? { backgroundColor: artwork.clientAvatarBg } : undefined}
+                        style={rc.clientAvatarBg ? { backgroundColor: rc.clientAvatarBg } : undefined}
                       >
                         <Image
-                          src={artwork.clientAvatar}
-                          alt={artwork.clientName || ""}
+                          src={rc.clientAvatar}
+                          alt={rc.clientName || ""}
                           fill
                           className="object-cover"
                           sizes="80px"
@@ -576,26 +598,26 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                     )}
                     <div className="pt-[8px] flex-1">
                       <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
-                        {artwork.clientName}
+                        {rc.clientName}
                       </h3>
-                      {(artwork.client || artwork.clientRole) && (
+                      {(rc.client || rc.clientRole) && (
                         <div className="mt-[4px]">
-                          {artwork.client && (
+                          {rc.client && (
                             <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px] uppercase">
-                              {artwork.client}
+                              {rc.client}
                             </p>
                           )}
-                          {artwork.clientRole && (
+                          {rc.clientRole && (
                             <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px]">
-                              {artwork.clientRole}
+                              {rc.clientRole}
                             </p>
                           )}
                         </div>
                       )}
                     </div>
-                    {artwork.clientSocials && (
+                    {rc.clientSocials && (
                       <div className="flex flex-col items-center gap-[10px] shrink-0">
-                        {artwork.clientSocials.map((social, i) => (
+                        {rc.clientSocials.map((social, i) => (
                           <a
                             key={i}
                             href={social.url}
@@ -663,11 +685,11 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
 
                 {/* Client review (for orders) */}
                 {artwork.review && (
-                  <div className="mt-[40px]">
+                  <div className="mt-[40px] max-w-[350px]">
                     <h3 className="text-[14px] font-bold tracking-[3.2px] text-[#808080] leading-[20px]">
-                      REVIEW TO ORDER
+                      {artwork.reviewType === "description" ? "DESCRIPTION" : "REVIEW TO ORDER"}
                     </h3>
-                    <p className="mt-[16px] text-[14px] font-medium leading-[20px] text-[#787878]">
+                    <p className="mt-[16px] text-[14px] font-medium leading-[20px] text-[#787878] whitespace-pre-line break-words">
                       {artwork.review[locale]}
                     </p>
                   </div>
