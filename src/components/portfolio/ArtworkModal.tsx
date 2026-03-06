@@ -42,9 +42,10 @@ function getVideoEmbedUrl(url: string): string | null {
       const m = u.pathname.match(/\/video\/([a-f0-9]+)/);
       if (m) return `https://rutube.ru/play/embed/${m[1]}`;
     }
-    // Vevo — typically hosted on YouTube, try as YouTube
-    if (u.hostname.includes("vevo.com")) {
-      return url; // Vevo doesn't have a standard embed, fallback to link
+    // Vimeo
+    if (u.hostname.includes("vimeo.com")) {
+      const m = u.pathname.match(/\/(\d+)/);
+      if (m) return `https://player.vimeo.com/video/${m[1]}`;
     }
   } catch { /* invalid URL */ }
   return null;
@@ -306,7 +307,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
             {videoPlatforms.length > 1 && (
               <div className="flex shrink-0">
                 {videoPlatforms.map(([key]) => {
-                  const labels: Record<string, string> = { youtube: "YouTube", vk: "VK Video", rutube: "RuTube", vevo: "Vevo" };
+                  const labels: Record<string, string> = { youtube: "YouTube", vk: "VK Video", rutube: "RuTube", vimeo: "Vimeo" };
                   return (
                     <button
                       key={key}

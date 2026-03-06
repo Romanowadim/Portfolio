@@ -140,7 +140,7 @@ export default function ArtworkFormModal({
   const [displayType, setDisplayType] = useState<"youtube" | "video" | "default">(editArtwork?.displayType || (editArtwork?.category === "youtube" ? "youtube" : "default"));
   const isYoutubeType = displayType === "youtube";
   const [videoLinks, setVideoLinks] = useState<Record<string, string>>(() => {
-    const init = { youtube: "", vk: "", rutube: "", vevo: "" };
+    const init = { youtube: "", vk: "", rutube: "", vimeo: "" };
     if (editArtwork?.videoUrls) {
       for (const [k, v] of Object.entries(editArtwork.videoUrls)) {
         if (k in init) init[k as keyof typeof init] = v;
@@ -151,7 +151,7 @@ export default function ArtworkFormModal({
         if (u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be")) init.youtube = editArtwork.videoUrl;
         else if (u.hostname.includes("vk.com") || u.hostname.includes("vkvideo.ru")) init.vk = editArtwork.videoUrl;
         else if (u.hostname.includes("rutube.ru")) init.rutube = editArtwork.videoUrl;
-        else if (u.hostname.includes("vevo.com")) init.vevo = editArtwork.videoUrl;
+        else if (u.hostname.includes("vimeo.com")) init.vimeo = editArtwork.videoUrl;
         else init.youtube = editArtwork.videoUrl;
       } catch { init.youtube = editArtwork.videoUrl; }
     }
@@ -614,7 +614,7 @@ export default function ArtworkFormModal({
                   { key: "youtube", label: "YouTube" },
                   { key: "vk", label: "VK Video" },
                   { key: "rutube", label: "RuTube" },
-                  { key: "vevo", label: "Vevo" },
+                  { key: "vimeo", label: "Vimeo" },
                 ] as const).map(({ key, label }) => (
                   <div key={key}>
                     <div className="flex items-center gap-[8px] mb-[6px]">
