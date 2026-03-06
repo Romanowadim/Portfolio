@@ -1,10 +1,15 @@
 // In-memory store for active visitors (resets on server restart)
-// Maps visitor IP/id → { last seen timestamp, page }
-const visitors = new Map<string, { ts: number; page: string }>();
+// Maps visitor IP/id → { last seen timestamp, page, country }
+// Use globalThis to persist across HMR in dev mode
+type VisitorEntry = { ts: number; page: string; country: string };
+const visitors: Map<string, VisitorEntry> =
+  (globalThis as Record<string, unknown>).__onlineVisitors as Map<string, VisitorEntry> ??
+  ((globalThis as Record<string, unknown>).__onlineVisitors = new Map<string, VisitorEntry>());
 const TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
-export function markOnline(id: string, page?: string): void {
-  visitors.set(id, { ts: Date.now(), page: page || "/" });
+export function markOnline(id: string, page?: string, country?: string): void {
+  const existing = visitors.get(id);
+  visitors.set(id, { ts: Date.now(), page: page || "/", country: country || existing?.country || "" });
 }
 
 function cleanup() {
@@ -17,6 +22,15 @@ function cleanup() {
 export function getOnlineCount(): number {
   cleanup();
   return visitors.size;
+}
+
+export function getOnlineCountries(): string[] {
+  cleanup();
+  const countries = new Set<string>();
+  for (const [, v] of visitors) {
+    if (v.country) countries.add(v.country);
+  }
+  return Array.from(countries);
 }
 
 export function getOnlineByPage(): { page: string; count: number }[] {

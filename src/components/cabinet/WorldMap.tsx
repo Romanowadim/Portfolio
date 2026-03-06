@@ -43,10 +43,13 @@ export default function WorldMap({ className }: Props) {
   const [allData, setAllData] = useState<Record<string, number>>({});
   const [dayData, setDayData] = useState<Record<string, number>>({});
   const [online, setOnline] = useState<number | null>(null);
+  const [onlineCountries, setOnlineCountries] = useState<string[]>([]);
   const [period, setPeriod] = useState<GeoPeriod>("all");
   const [hovered, setHovered] = useState<string | null>(null);
   const [mouse, setMouse] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [countryCenters, setCountryCenters] = useState<Record<string, { cx: number; cy: number }>>({});
 
   useEffect(() => {
     fetch(`/api/stats/geo-visits?period=${period}`)
@@ -70,7 +73,10 @@ export default function WorldMap({ className }: Props) {
     const fetchOnline = () => {
       fetch("/api/stats/online")
         .then((r) => r.json())
-        .then((data) => { if (typeof data?.count === "number") setOnline(data.count); })
+        .then((data) => {
+          if (typeof data?.count === "number") setOnline(data.count);
+          if (Array.isArray(data?.countries)) setOnlineCountries(data.countries);
+        })
         .catch(() => {});
     };
     fetchOnline();
@@ -78,6 +84,19 @@ export default function WorldMap({ className }: Props) {
     return () => clearInterval(interval);
   }, []);
 
+
+  // Compute country path centers for online dots
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const centers: Record<string, { cx: number; cy: number }> = {};
+    svg.querySelectorAll<SVGPathElement>("path[data-code]").forEach((el) => {
+      const code = el.getAttribute("data-code")!;
+      const bbox = el.getBBox();
+      centers[code] = { cx: bbox.x + bbox.width / 2, cy: bbox.y + bbox.height / 2 };
+    });
+    setCountryCenters(centers);
+  }, []);
 
   // Summary card data
   const allSorted = Object.entries(allData).sort(([, a], [, b]) => b - a);
@@ -185,7 +204,13 @@ export default function WorldMap({ className }: Props) {
             className="overflow-hidden relative"
             onMouseMove={handleMouseMove}
           >
-            <svg viewBox={`0 ${CROP_TOP} ${W} ${H - CROP_TOP - CROP_BOTTOM}`} className="w-full block">
+            <svg ref={svgRef} viewBox={`0 ${CROP_TOP} ${W} ${H - CROP_TOP - CROP_BOTTOM}`} className="w-full block">
+              <style>{`
+                @keyframes ping-dot {
+                  0% { r: 3; opacity: 0.9; }
+                  75%, 100% { r: 8; opacity: 0; }
+                }
+              `}</style>
               {Object.entries(COUNTRY_PATHS).map(([code, d]) => {
                 const fill = fillColor(code);
                 const hasData = !!geoData[code];
@@ -194,6 +219,7 @@ export default function WorldMap({ className }: Props) {
                   <path
                     key={code}
                     d={d}
+                    data-code={code}
                     fill={fill || "var(--color-text-muted)"}
                     fillOpacity={fill ? (isHovered ? 0.95 : 0.75) : 0.08}
                     stroke="var(--color-text-muted)"
@@ -203,6 +229,16 @@ export default function WorldMap({ className }: Props) {
                     onMouseLeave={hasData ? () => setHovered(null) : undefined}
                     className={hasData ? "cursor-pointer transition-[fill-opacity] duration-150" : ""}
                   />
+                );
+              })}
+              {onlineCountries.map((code) => {
+                const c = countryCenters[code];
+                if (!c) return null;
+                return (
+                  <g key={`online-${code}`}>
+                    <circle cx={c.cx} cy={c.cy} r="3" fill="#ef4444" opacity="0.9" style={{ animation: "ping-dot 1.5s cubic-bezier(0,0,0.2,1) infinite" }} />
+                    <circle cx={c.cx} cy={c.cy} r="2.5" fill="#ef4444" />
+                  </g>
                 );
               })}
             </svg>

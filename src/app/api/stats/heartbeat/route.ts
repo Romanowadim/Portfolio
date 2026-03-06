@@ -9,7 +9,8 @@ export async function POST(req: NextRequest) {
       page = body.page || "/";
     } catch { /* no body */ }
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
-    markOnline(ip, page);
+    const country = req.headers.get("x-vercel-ip-country") || "";
+    markOnline(ip, page, country);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ ok: false }, { status: 500 });

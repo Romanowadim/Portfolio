@@ -13,6 +13,7 @@ export type Artwork = {
   subcategory?: string;
   displayType?: "youtube" | "video" | "default";
   videoUrl?: string;
+  videoUrls?: Record<string, string>;
   objectPosition?: string;
   client?: string;
   clientName?: string;

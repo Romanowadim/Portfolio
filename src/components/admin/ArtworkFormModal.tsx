@@ -23,6 +23,7 @@ const socialOptions = [
 ];
 
 
+
 type Props = {
   category: string;
   subcategory?: string;
@@ -138,7 +139,24 @@ export default function ArtworkFormModal({
   const [socials, setSocials] = useState<{ icon: string; url: string }[]>(editArtwork?.clientSocials || []);
   const [displayType, setDisplayType] = useState<"youtube" | "video" | "default">(editArtwork?.displayType || (editArtwork?.category === "youtube" ? "youtube" : "default"));
   const isYoutubeType = displayType === "youtube";
-  const [videoUrl, setVideoUrl] = useState(editArtwork?.videoUrl || "");
+  const [videoLinks, setVideoLinks] = useState<Record<string, string>>(() => {
+    const init = { youtube: "", vk: "", rutube: "", vevo: "" };
+    if (editArtwork?.videoUrls) {
+      for (const [k, v] of Object.entries(editArtwork.videoUrls)) {
+        if (k in init) init[k as keyof typeof init] = v;
+      }
+    } else if (editArtwork?.videoUrl) {
+      try {
+        const u = new URL(editArtwork.videoUrl);
+        if (u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be")) init.youtube = editArtwork.videoUrl;
+        else if (u.hostname.includes("vk.com") || u.hostname.includes("vkvideo.ru")) init.vk = editArtwork.videoUrl;
+        else if (u.hostname.includes("rutube.ru")) init.rutube = editArtwork.videoUrl;
+        else if (u.hostname.includes("vevo.com")) init.vevo = editArtwork.videoUrl;
+        else init.youtube = editArtwork.videoUrl;
+      } catch { init.youtube = editArtwork.videoUrl; }
+    }
+    return init;
+  });
   const [subscribers, setSubscribers] = useState(editArtwork?.subscribers || "");
   const [subsFetching, setSubsFetching] = useState(false);
   const subsFetchingRef = useRef(false);
@@ -342,14 +360,14 @@ export default function ArtworkFormModal({
   };
 
   const handleSave = async () => {
-    if (!imageUrl || !titleRu || !titleEn) return;
+    if (displayType === "video" ? (!Object.values(videoLinks).some((l) => l.trim()) || !titleRu || !titleEn) : (!imageUrl || !titleRu || !titleEn)) return;
     setSaving(true);
     setError("");
 
     const artwork: Artwork = {
       id: editArtwork?.id || `dyn-${Date.now()}`,
       title: { ru: titleRu, en: titleEn },
-      image: imageUrl,
+      image: imageUrl || "/images/video-placeholder.svg",
       thumbnail: thumbnailUrl || undefined,
       logo: logoUrl || undefined,
       sketch: sketchUrl || undefined,
@@ -360,7 +378,11 @@ export default function ArtworkFormModal({
       category: cat,
       subcategory: subcat || undefined,
       displayType: displayType !== "default" ? displayType : undefined,
-      videoUrl: displayType === "video" ? (videoUrl || undefined) : undefined,
+      videoUrl: displayType === "video" ? (Object.values(videoLinks).find((l) => l.trim()) || undefined) : undefined,
+      videoUrls: displayType === "video" ? (() => {
+        const filled = Object.fromEntries(Object.entries(videoLinks).filter(([, v]) => v.trim()));
+        return Object.keys(filled).length > 0 ? filled : undefined;
+      })() : undefined,
       // Contact by reference vs manual fields
       contactId: linkedContactId || undefined,
       client: linkedContactId ? undefined : (client || undefined),
@@ -580,11 +602,48 @@ export default function ArtworkFormModal({
           className="flex max-h-[90vh] w-full max-w-[1094px] shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* ── LEFT PANEL: images ── */}
-          <div className="flex-1 bg-text-light flex flex-col gap-[22px] p-[22px] min-w-0">
-            {renderDropZone("main", imageUrl, mainDragOver, mainUploading, () => { setImageUrl(""); setThumbnailUrl(""); })}
-            {renderDropZone("sketch", sketchUrl, sketchDragOver, sketchUploading, () => setSketchUrl(""))}
-          </div>
+          {/* ── LEFT PANEL: images or video links ── */}
+          {displayType === "video" ? (
+            <div className="flex-1 bg-text-light flex flex-col p-[22px] min-w-0 justify-center">
+              <span className="text-white text-[12px] font-bold tracking-[2.8px] uppercase mb-[22px]">
+                Video links
+              </span>
+
+              <div className="flex flex-col gap-[14px]">
+                {([
+                  { key: "youtube", label: "YouTube" },
+                  { key: "vk", label: "VK Video" },
+                  { key: "rutube", label: "RuTube" },
+                  { key: "vevo", label: "Vevo" },
+                ] as const).map(({ key, label }) => (
+                  <div key={key}>
+                    <div className="flex items-center gap-[8px] mb-[6px]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/images/social/${key}.svg`}
+                        alt={label}
+                        className="w-[16px] h-[16px] object-contain brightness-0 invert"
+                      />
+                      <span className="text-white text-[11px] font-bold tracking-[2px] uppercase">
+                        {label}
+                      </span>
+                    </div>
+                    <input
+                      className="w-full h-[36px] bg-transparent border border-white px-[12px] text-white text-[13px] outline-none placeholder:text-white/50 transition-colors"
+                      value={videoLinks[key]}
+                      onChange={(e) => setVideoLinks({ ...videoLinks, [key]: e.target.value })}
+                      placeholder="..."
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 bg-text-light flex flex-col gap-[22px] p-[22px] min-w-0">
+              {renderDropZone("main", imageUrl, mainDragOver, mainUploading, () => { setImageUrl(""); setThumbnailUrl(""); })}
+              {renderDropZone("sketch", sketchUrl, sketchDragOver, sketchUploading, () => setSketchUrl(""))}
+            </div>
+          )}
 
           {/* ── RIGHT PANEL: form ── */}
           <div className="w-[540px] shrink-0 bg-white overflow-y-auto px-[40px] py-[40px]">
@@ -660,17 +719,6 @@ export default function ArtworkFormModal({
                     YouTube
                   </button>
                 </div>
-                {displayType === "video" && (
-                  <div className="mt-3">
-                    <label className={labelClass}>Video URL</label>
-                    <input
-                      className="w-full h-[30px] border border-text-light pl-3 pr-3 text-sm outline-none focus:border-text transition-colors"
-                      value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
-                      placeholder="YouTube, VK, RuTube, or Vevo URL"
-                    />
-                  </div>
-                )}
               </div>
             </div>
 

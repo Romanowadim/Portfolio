@@ -99,6 +99,12 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [imgRatio, setImgRatio] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"final" | "sketch">("final");
+
+  // Video platform switching
+  const videoPlatforms = artwork.videoUrls
+    ? Object.entries(artwork.videoUrls).filter(([, url]) => url?.trim())
+    : artwork.videoUrl ? [["default", artwork.videoUrl] as const] : [];
+  const [activeVideoPlatform, setActiveVideoPlatform] = useState(videoPlatforms[0]?.[0] ?? "");
   const cardRef = useRef<HTMLDivElement>(null);
   const [hintBottom, setHintBottom] = useState(26);
 
@@ -115,9 +121,11 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
     return () => window.removeEventListener("resize", updateHintPos);
   }, [updateHintPos, fullscreen]);
 
-  // Reset view mode when navigating to another artwork
+  // Reset view mode and video platform when navigating to another artwork
   useEffect(() => {
     setViewMode("final");
+    setActiveVideoPlatform(videoPlatforms[0]?.[0] ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [artwork.id]);
 
   const displayImage = viewMode === "sketch" && artwork.sketch ? artwork.sketch : artwork.image;
@@ -175,15 +183,33 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
       }
       if (e.code === "KeyC") onClose();
       if (e.code === "KeyF") setFullscreen((v) => !v);
-      if (e.code === "KeyV") setViewMode((v) => v === "final" ? "sketch" : "final");
+      if (e.code === "KeyV") {
+        if (videoPlatforms.length > 1) {
+          setActiveVideoPlatform((cur) => {
+            const idx = videoPlatforms.findIndex(([k]) => k === cur);
+            return videoPlatforms[(idx + 1) % videoPlatforms.length][0];
+          });
+        } else {
+          setViewMode((v) => v === "final" ? "sketch" : "final");
+        }
+      }
     };
+    // Reclaim focus from video iframe so hotkeys keep working
+    const handleBlur = () => {
+      if (document.activeElement?.tagName === "IFRAME") {
+        window.focus();
+      }
+    };
+
     document.addEventListener("keydown", handleKey);
+    window.addEventListener("blur", handleBlur);
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", handleKey);
+      window.removeEventListener("blur", handleBlur);
       document.body.style.overflow = "";
     };
-  }, [onClose, onPrev, onNext, fullscreen, viewMode]);
+  }, [onClose, onPrev, onNext, fullscreen, viewMode, videoPlatforms]);
 
   const content = (
     <motion.div
@@ -265,7 +291,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
 
       {/* Modal content */}
       {artwork.displayType === "video" ? (
-        /* ─── Video layout: same as YouTube but with embedded video ─── */
+        /* ─── Video layout: horizontal like illustration, video on the left ─── */
         <div className="absolute inset-0 flex items-center justify-center p-[52px]" onClick={onClose}>
           <motion.div
             initial={{ opacity: instant ? 1 : 0, y: instant ? 0 : 20 }}
@@ -273,56 +299,335 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
             transition={{ duration: 0.4, delay: instant ? 0 : 0.1 }}
             ref={cardRef}
             onAnimationComplete={updateHintPos}
-            className="flex flex-col max-w-[1596px] w-full"
+            className="flex flex-col max-h-[calc(50vh+360px)] h-full"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* White card */}
-            <div className="bg-white shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]">
-              {/* Embedded video */}
+            {/* Platform tabs — above the card */}
+            {videoPlatforms.length > 1 && (
+              <div className="flex shrink-0">
+                {videoPlatforms.map(([key]) => {
+                  const labels: Record<string, string> = { youtube: "YouTube", vk: "VK Video", rutube: "RuTube", vevo: "Vevo" };
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setActiveVideoPlatform(key)}
+                      className={`flex items-center gap-[8px] px-[20px] py-[10px] text-[12px] font-bold tracking-[2px] uppercase transition-colors ${
+                        activeVideoPlatform === key
+                          ? "bg-[#808080] text-white"
+                          : "text-[#c0c0c0] hover:text-[#808080]"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`/images/social/${key}.svg`}
+                        alt={key}
+                        className="w-[14px] h-[14px] object-contain"
+                        style={{ filter: activeVideoPlatform === key ? "brightness(0) invert(1)" : "grayscale(1) brightness(0.75)" }}
+                      />
+                      {labels[key] ?? key}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Card */}
+            <div className="flex flex-1 min-h-0 shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]">
+            {/* Left — embedded video */}
+            <div
+              className="relative h-full shrink-0 overflow-hidden bg-black"
+              style={{ width: `min(calc(${16/9} * (50vh + 360px)), calc(100vw - 104px - 455px))` }}
+            >
               {(() => {
-                const embedUrl = getVideoEmbedUrl(artwork.videoUrl || "");
+                const activeUrl = videoPlatforms.find(([k]) => k === activeVideoPlatform)?.[1] || artwork.videoUrl || "";
+                const embedUrl = getVideoEmbedUrl(activeUrl);
                 return embedUrl ? (
-                  <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
-                    <iframe
-                      src={embedUrl}
-                      className="absolute inset-0 w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      frameBorder="0"
-                    />
-                  </div>
+                  <iframe
+                    key={activeVideoPlatform}
+                    src={embedUrl}
+                    className="absolute inset-0 w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    frameBorder="0"
+                  />
                 ) : (
-                  <div className="relative w-full overflow-hidden" style={{ aspectRatio: imgRatio ?? 6 }}>
-                    <Image src={displayImage} alt={artwork.title[locale]} fill className="object-cover" sizes="90vw" priority />
-                  </div>
+                  <Image src={displayImage} alt={artwork.title[locale]} fill className="object-contain" sizes="60vw" priority />
                 );
               })()}
+            </div>
 
-              {/* Info section below video — two columns */}
-              <div className="flex gap-[160px] px-[67px] pt-[57px] pb-[52px]">
-                <div className="flex flex-col gap-[14px] flex-1">
+            {/* Right — info panel */}
+            <div className="bg-white flex flex-col justify-between p-[50px] w-[455px] shrink-0 overflow-y-auto">
+              {/* Top section */}
+              <div>
+                {/* Client info block */}
+                {isOrder && (
+                  <div
+                    className={`flex items-start gap-[16px] mb-[40px]${clientSocialUrl ? ' cursor-pointer hover:bg-[#f5f5f5] transition-colors p-[12px] -mx-[12px] -mt-[12px]' : ''}`}
+                    onClick={clientSocialUrl ? (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('a')) { fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: resolvedContact?.id ?? artwork.contactId }) }); window.open(clientSocialUrl, '_blank'); } } : undefined}
+                  >
+                    {rc.clientAvatar && (
+                      <div
+                        className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
+                        style={rc.clientAvatarBg ? { backgroundColor: rc.clientAvatarBg } : undefined}
+                      >
+                        <Image
+                          src={rc.clientAvatar}
+                          alt={rc.clientName || ""}
+                          fill
+                          className="object-cover"
+                          sizes="80px"
+                        />
+                      </div>
+                    )}
+                    <div className="pt-[8px] flex-1">
+                      <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
+                        {rc.clientName}
+                      </h3>
+                      {(rc.client || rc.clientRole) && (
+                        <div className="mt-[4px]">
+                          {rc.client && (
+                            <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px] uppercase">
+                              {rc.client}
+                            </p>
+                          )}
+                          {rc.clientRole && (
+                            <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px]">
+                              {rc.clientRole}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {rc.clientSocials && (
+                      <div className="flex flex-col items-center gap-[10px] shrink-0">
+                        {rc.clientSocials.map((social, i) => (
+                          <a
+                            key={i}
+                            href={social.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: resolvedContact?.id ?? artwork.contactId }) })}
+                            className="block w-[20px] h-[20px] hover:brightness-[0.667] transition-[filter]"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`/images/social/${social.icon}.svg`}
+                              alt={social.icon}
+                              className="w-full h-full object-contain"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Title + Metadata block */}
+                <div className="border-t border-b border-[#e8e8e8] py-[20px]">
                   <h2 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
                     {artwork.title[locale]}
                   </h2>
-                  {rc.clientName && (
-                    <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px] uppercase">
-                      {rc.clientName}
-                    </p>
+
+                  {(artwork.year || artwork.hours || artwork.resolution) && (
+                    <div className="mt-[16px] flex flex-col gap-[2px]">
+                      <div className="flex gap-[20px]">
+                        {artwork.year && (
+                          <span className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[20px]">
+                            {artwork.year}
+                          </span>
+                        )}
+                        {artwork.hours && (
+                          <span className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[20px]">
+                            {artwork.hours}
+                          </span>
+                        )}
+                      </div>
+                      {artwork.resolution && (
+                        <span className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[20px]">
+                          {artwork.resolution}px.
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Admin: view stats */}
+                  {isAdmin && viewStats && (
+                    <div className="mt-[16px] flex items-center gap-[8px]">
+                      <svg width="14" height="14" viewBox="0 0 20 14" fill="none" className="text-[#c0c0c0]">
+                        <path d="M10 0C5.5 0 1.73 2.89 0 7c1.73 4.11 5.5 7 10 7s8.27-2.89 10-7c-1.73-4.11-5.5-7-10-7zm0 11.67A4.67 4.67 0 1 1 10 2.33a4.67 4.67 0 0 1 0 9.34zM10 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6z" fill="currentColor" />
+                      </svg>
+                      <span className="text-[12px] font-bold tracking-[0.5px] text-[#c0c0c0]">{viewStats.total}</span>
+                      {viewStats.recent > 0 && (
+                        <span className="text-[12px] font-bold tracking-[0.5px]" style={{ color: "#81AB41" }}>
+                          +{viewStats.recent}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
-                <div className="flex flex-col gap-[14px] shrink-0">
-                  {artwork.year && (
-                    <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] uppercase leading-[15px]">
-                      {artwork.year}
+
+                {/* Client review */}
+                {artwork.review && (
+                  <div className="mt-[40px] max-w-[350px]">
+                    <h3 className="text-[14px] font-bold tracking-[3.2px] text-[#808080] leading-[20px]">
+                      {artwork.reviewType === "description" ? "DESCRIPTION" : "REVIEW TO ORDER"}
+                    </h3>
+                    <p className="mt-[16px] text-[14px] font-medium leading-[20px] text-[#787878] whitespace-pre-line break-words">
+                      {artwork.review[locale]}
                     </p>
-                  )}
-                  {artwork.tools && (
-                    <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] uppercase leading-[15px]">
-                      {artwork.tools}
-                    </p>
-                  )}
-                </div>
+                  </div>
+                )}
+
+                {/* Coworkers */}
+                {artwork.coworkers && artwork.coworkers.length > 0 && (
+                  <div className="mt-[40px]">
+                    <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] leading-[20px]">
+                      COWORKERS
+                    </h3>
+                    <div className="flex flex-col mt-[16px]">
+                      {artwork.coworkers.map((cw, i) => {
+                        const fresh = coworkerList.find((c) => (cw.id && c.id === cw.id) || c.name === cw.name);
+                        const data = fresh ?? cw;
+                        const socials = (fresh?.socials ?? cw.socials ?? []).filter((s) => s.url);
+                        const cwUrl = socials[0]?.url;
+                        return (
+                        <div key={i}>
+                          {i > 0 && <div className="h-px bg-[#f0f0f0] my-[12px]" />}
+                          <div
+                            className={`flex items-center gap-[12px]${cwUrl ? ' cursor-pointer hover:bg-[#f5f5f5] transition-colors p-[12px] -m-[12px]' : ''}`}
+                            onClick={cwUrl ? (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('a')) { fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: cw.id ?? cw.name }) }); window.open(cwUrl, '_blank'); } } : undefined}
+                          >
+                          <div className="relative w-[36px] h-[36px] rounded-full overflow-hidden shrink-0 bg-[#f0f0f0] flex items-center justify-center">
+                            {data.avatar ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={data.avatar} alt={data.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-[13px] font-bold text-[#c0c0c0]">
+                                {data.name.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-bold tracking-[1.8px] text-[#808080] uppercase leading-[16px]">
+                              {data.name}
+                            </p>
+                            {data.role && (
+                              <p className="text-[12px] font-medium tracking-[1.5px] text-[#c0c0c0] leading-[14px]">
+                                {data.role}
+                              </p>
+                            )}
+                          </div>
+                          {socials.length > 0 && (
+                            <div className="flex gap-[8px] shrink-0">
+                              {socials.map((s, j) => (
+                                <a
+                                  key={j}
+                                  href={s.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: cw.id ?? cw.name }) })}
+                                  className="block w-[16px] h-[16px] hover:brightness-[0.667] transition-[filter]"
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={`/images/social/${s.icon}.svg`} alt={s.icon} className="w-full h-full object-contain" />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                          </div>
+                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Workspaces + Versions at bottom */}
+              <div>
+                {artwork.tools && (
+                  <div className="mt-[40px]">
+                    <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] leading-[20px]">
+                      WORKSPACES
+                    </h3>
+                    <div className="flex items-center gap-[20px] mt-[16px]">
+                      {artwork.tools.split(" | ").map((tool) => {
+                        const key = tool.toLowerCase();
+                        const info = toolInfo[key];
+                        const iconFile = info?.file ?? key;
+                        const iconExt = info?.ext ?? "svg";
+                        const iconSrc = `/images/programs/${iconFile}.${iconExt}`;
+                        return (
+                          <div
+                            key={tool}
+                            className="relative"
+                            onMouseEnter={() => setHoveredTool(tool)}
+                            onMouseLeave={() => setHoveredTool(null)}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={iconSrc}
+                              alt={tool}
+                              className="object-contain cursor-pointer w-[35px] h-[35px]"
+                              style={{ filter: info?.invert ? "invert(1) grayscale(1) opacity(0.4)" : "grayscale(1) opacity(0.25)" }}
+                            />
+                            <AnimatePresence>
+                              {hoveredTool === tool && info && (
+                                <motion.div
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  exit={{ opacity: 0 }}
+                                  transition={{ duration: 0.15 }}
+                                  className="absolute z-50 w-[209px] rounded-[13px] bg-white shadow-[0px_1px_10px_0px_rgba(0,0,0,0.1)] pointer-events-none"
+                                  style={{ left: -13, top: -14 }}
+                                >
+                                  <div className="flex items-center gap-3 px-[13px] pt-[14px] pb-[13px]">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={iconSrc} alt="" className="object-contain shrink-0 w-[35px] h-[35px]" style={info?.invert ? { filter: "invert(1)" } : undefined} />
+                                    <span className="text-[14px] text-[#7f7f7f] leading-[20px] font-semibold">
+                                      {info.fullName}
+                                    </span>
+                                  </div>
+                                  <div className="h-px bg-[#e8e8e8] mx-[11px]" />
+                                  <p className="text-[12px] text-[#7f7f7f] leading-[15.5px] text-center py-[10px]">
+                                    {getExperience(info.since)}
+                                  </p>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Versions toggle (if sketch exists) */}
+                {artwork.sketch && (
+                  <div className="mt-[40px]">
+                    <h3 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] leading-[20px]">
+                      VERSIONS
+                    </h3>
+                    <div className="flex items-center gap-[12px] mt-[16px]">
+                      {(["final", "sketch"] as const).map((mode, i) => (
+                        <span key={mode} className="flex items-center gap-[12px]">
+                          {i > 0 && <span className="w-px h-[1em] bg-[#c0c0c0]" />}
+                          <button
+                            onClick={() => setViewMode(mode)}
+                            className={`text-[12px] font-bold tracking-[2px] uppercase transition-colors ${
+                              viewMode === mode ? "text-[#808080]" : "text-[#c0c0c0] hover:text-[#808080]"
+                            }`}
+                          >
+                            {mode}
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
             </div>
           </motion.div>
         </div>
@@ -1002,7 +1307,10 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
         <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">←</kbd> Move Left</span>
         <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">→</kbd> Move Right</span>
         <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">F</kbd> Full Screen</span>
-        {artwork.sketch && <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">V</kbd> Change Version</span>}
+        {videoPlatforms.length > 0 && <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">␣</kbd> Pause</span>}
+        {videoPlatforms.length > 0 && <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">M</kbd> Mute</span>}
+        {videoPlatforms.length > 1 && <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">V</kbd> Switch Player</span>}
+        {videoPlatforms.length <= 1 && artwork.sketch && <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">V</kbd> Change Version</span>}
         <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">C</kbd> Close</span>
       </div>
     </motion.div>

@@ -146,7 +146,7 @@ export function ArtworkStatRow({
       <span className="w-px h-[32px] bg-bg-dark shrink-0" />
       <div className="shrink-0 w-[60px]">
         <p className="text-[12px] font-bold tracking-[1.2px] text-text-light">
-          {artwork.sketch ? "F+S" : "F"}
+          {artwork.displayType === "video" ? "V" : artwork.sketch ? "F+S" : "F"}
         </p>
       </div>
       <span className="w-px h-[32px] bg-bg-dark shrink-0" />
