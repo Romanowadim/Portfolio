@@ -15,13 +15,15 @@ const CV_COLORS = ["#81AB41", "#E8913A", "#5B8DEF", "#E85B8D", "#8B5CF6", "#14B8
 export { CV_COLORS, CV_CHART_H, CV_LABEL_H, CV_Y_LABEL_W, CV_PERIODS };
 export type { CVPeriod, CVBucket };
 
-export default function EntityChart({ chartId, apiUrl, title, sidebarTitle, icon, sidebarIcon }: {
+export default function EntityChart({ chartId, apiUrl, title, sidebarTitle, icon, sidebarIcon, sidebarWidth, stretch }: {
   chartId: string;
   apiUrl: string;
   title: string;
   sidebarTitle: string;
   icon: React.ReactNode;
   sidebarIcon?: React.ReactNode;
+  sidebarWidth?: string;
+  stretch?: boolean;
 }) {
   const t = useTranslations("admin");
   const [mounted, setMounted] = useState(false);
@@ -97,9 +99,9 @@ export default function EntityChart({ chartId, apiUrl, title, sidebarTitle, icon
   if (!mounted) return null;
 
   return (
-    <div className="border border-border mb-[4px] overflow-hidden">
-      <div className="flex max-h-[260px]">
-        <div className="w-2/3 min-w-0 px-[20px] py-[16px]">
+    <div className={`border border-border mb-[4px] overflow-hidden ${stretch ? "h-full" : ""}`}>
+      <div className={`flex ${stretch ? "h-full" : "max-h-[260px]"}`}>
+        <div className={`${sidebarWidth ? "" : "w-2/3"} min-w-0 px-[20px] py-[16px]`} style={sidebarWidth ? { width: `calc(100% - ${sidebarWidth})` } : undefined}>
           <div className="flex items-center justify-between mb-[16px]">
             <div className="flex items-center gap-[8px]">
               <span className="text-text-muted flex items-center">{icon}</span>
@@ -159,14 +161,13 @@ export default function EntityChart({ chartId, apiUrl, title, sidebarTitle, icon
             </div>
           )}
         </div>
-        <div className="w-px bg-border shrink-0" />
-        <div className="w-1/3 shrink-0 px-[16px] py-[16px] flex flex-col overflow-hidden" {...{ [`data-ec-sidebar-${chartId}`]: true }}>
-          <div className="text-[12px] font-bold tracking-[2px] uppercase text-text-light mb-[12px] shrink-0">{sidebarTitle}</div>
+        <div className={`${sidebarWidth ? "" : "w-1/3"} shrink-0 py-[16px] flex flex-col overflow-hidden border-l border-border`} style={sidebarWidth ? { width: sidebarWidth } : undefined} {...{ [`data-ec-sidebar-${chartId}`]: true }}>
+          <div className="text-[12px] font-bold tracking-[2px] uppercase text-text-light mb-[16px] shrink-0 px-[16px]" style={{ height: 32, lineHeight: "36px" }}>{sidebarTitle}</div>
           <div className="overflow-y-auto min-h-0 flex-1">
-            {loading ? (<span className="text-[12px] text-text-light animate-pulse">...</span>) : data.length === 0 ? (<span className="text-[12px] text-text-light">—</span>) : (
+            {loading ? (<span className="text-[12px] text-text-light animate-pulse px-[16px]">...</span>) : data.length === 0 ? (<span className="text-[12px] text-text-light px-[16px]">—</span>) : (
               <div className="flex flex-col">
                 {data.map((entity, ci) => { const isSelected = selectedId === entity.id; const color = isSelected ? CV_COLORS[0] : CV_COLORS[ci % CV_COLORS.length]; return (
-                  <button key={entity.id} onClick={() => setSelectedId(isSelected ? null : entity.id)} className={`flex items-center gap-[6px] text-left transition-opacity py-[6px] ${ci > 0 ? "border-t border-border" : ""} ${selectedId && !isSelected ? "opacity-40" : ""}`}>
+                  <button key={entity.id} onClick={() => setSelectedId(isSelected ? null : entity.id)} className={`flex items-center gap-[6px] text-left transition-all py-[6px] px-[16px] ${ci > 0 ? "border-t border-border" : ""} ${selectedId && !isSelected ? "opacity-40" : ""} hover:bg-text-muted/[0.06]`}>
                     <span className="text-[12px] font-bold text-text-light tabular-nums w-[16px] text-right shrink-0">{ci + 1}</span>
                     <span className="w-px h-[12px] bg-border shrink-0" />
                     <span className="shrink-0 text-text-muted">{sidebarIcon ?? icon}</span>

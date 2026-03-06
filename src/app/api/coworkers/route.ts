@@ -2,7 +2,14 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/admin";
 import { readCoworkers, writeCoworkers } from "@/lib/blob";
+import { unlink } from "fs/promises";
+import path from "path";
 import type { Coworker } from "@/lib/blob";
+
+function deleteUpload(url: string | undefined) {
+  if (!url || !url.startsWith("/uploads/")) return;
+  unlink(path.join(process.cwd(), "public", url)).catch(() => {});
+}
 
 export async function GET() {
   return NextResponse.json(await readCoworkers());
@@ -33,8 +40,13 @@ export async function PUT(req: Request) {
   const coworker: Coworker = await req.json();
   const existing = await readCoworkers();
   const idx = existing.findIndex((c) => c.id === coworker.id);
-  if (idx === -1) existing.push(coworker);
-  else existing[idx] = coworker;
+  if (idx !== -1) {
+    const old = existing[idx];
+    if (old.avatar && old.avatar !== coworker.avatar) deleteUpload(old.avatar);
+    existing[idx] = coworker;
+  } else {
+    existing.push(coworker);
+  }
   await writeCoworkers(existing);
   return NextResponse.json({ ok: true, coworker });
 }
@@ -44,6 +56,12 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id } = await req.json();
-  await writeCoworkers((await readCoworkers()).filter((c) => c.id !== id));
+  const coworkers = await readCoworkers();
+  const coworker = coworkers.find((c) => c.id === id);
+  await writeCoworkers(coworkers.filter((c) => c.id !== id));
+  if (coworker) {
+    deleteUpload(coworker.avatar);
+    coworker.socials?.forEach((s) => deleteUpload(s.icon));
+  }
   return NextResponse.json({ ok: true });
 }

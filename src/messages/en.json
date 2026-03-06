@@ -73,6 +73,7 @@
   "admin": {
     "cabinet": "Cabinet",
     "statistic": "Statistic",
+    "cards": "Cards",
     "colNameInfo": "Name / Info",
     "colViews": "Views",
     "colDate": "Date",

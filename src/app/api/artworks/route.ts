@@ -3,7 +3,15 @@ import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/admin";
 import { readDynamicArtworks, writeDynamicArtworks } from "@/lib/blob";
 import { readDeletedIds, addDeletedId } from "@/lib/deleted";
+import { unlink } from "fs/promises";
+import path from "path";
 import type { Artwork } from "@/data/artworks";
+
+function deleteUploadedFile(url: string | undefined) {
+  if (!url || !url.startsWith("/uploads/")) return;
+  const filePath = path.join(process.cwd(), "public", url);
+  unlink(filePath).catch(() => {});
+}
 
 export async function GET() {
   const artworks = await readDynamicArtworks();
@@ -59,8 +67,11 @@ export async function PUT(req: Request) {
     if (idx === -1) {
       existing.push({ ...artwork, createdAt: artwork.createdAt ?? new Date().toISOString() });
     } else {
-      // Preserve original createdAt on update
-      existing[idx] = { ...artwork, createdAt: existing[idx].createdAt ?? artwork.createdAt };
+      const old = existing[idx];
+      if (old.image && old.image !== artwork.image) deleteUploadedFile(old.image);
+      if (old.thumbnail && old.thumbnail !== artwork.thumbnail) deleteUploadedFile(old.thumbnail);
+      if (old.sketch && old.sketch !== artwork.sketch) deleteUploadedFile(old.sketch);
+      existing[idx] = { ...artwork, createdAt: old.createdAt ?? artwork.createdAt };
     }
     await writeDynamicArtworks(existing);
     return NextResponse.json({ ok: true, artwork });
@@ -78,10 +89,16 @@ export async function DELETE(req: Request) {
   try {
     const { id } = await req.json();
     const existing = await readDynamicArtworks();
+    const artwork = existing.find((a) => a.id === id);
     const filtered = existing.filter((a) => a.id !== id);
     if (filtered.length < existing.length) {
-      // Dynamic artwork — remove from list
+      // Dynamic artwork — remove from list and delete files
       await writeDynamicArtworks(filtered);
+      if (artwork) {
+        deleteUploadedFile(artwork.image);
+        deleteUploadedFile(artwork.thumbnail);
+        deleteUploadedFile(artwork.sketch);
+      }
     } else {
       // Static artwork — record as deleted
       await addDeletedId(id);

@@ -58,6 +58,7 @@ const UPLOADS_DIR = path.join(process.cwd(), "public", "uploads");
 
 const DATA_FILES = [
   "artworks.json",
+  "categories.json",
   "contacts.json",
   "coworkers.json",
   "site-settings.json",

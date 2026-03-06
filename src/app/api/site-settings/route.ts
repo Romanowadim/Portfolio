@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/admin";
 import fs from "fs/promises";
 import path from "path";
+import { readSocialClicks, writeSocialClicks } from "@/lib/social-clicks";
 
 const FILE = path.join(process.cwd(), "data", "site-settings.json");
 
@@ -103,6 +104,21 @@ export async function PUT(req: Request) {
 
   // Update socials
   if (Array.isArray(body.socials)) {
+    // Migrate click data when names change (ignore reordering)
+    const oldSet = new Set(current.socials.map((s) => s.name));
+    const newSet = new Set((body.socials as SocialEntry[]).map((s) => s.name));
+    const removed = [...oldSet].filter((n) => !newSet.has(n));
+    const added = [...newSet].filter((n) => !oldSet.has(n));
+    if (removed.length === 1 && added.length === 1) {
+      const clicks = await readSocialClicks();
+      const [oldName] = removed;
+      const [newName] = added;
+      if (clicks[oldName]) {
+        clicks[newName] = [...(clicks[newName] ?? []), ...clicks[oldName]];
+        delete clicks[oldName];
+        await writeSocialClicks(clicks);
+      }
+    }
     current.socials = body.socials;
     await write(current);
     return NextResponse.json(current);

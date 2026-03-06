@@ -73,6 +73,7 @@
   "admin": {
     "cabinet": "Кабинет",
     "statistic": "Статистика",
+    "cards": "Карточки",
     "colNameInfo": "Имя / Инфо",
     "colViews": "Просмотры",
     "colDate": "Дата",

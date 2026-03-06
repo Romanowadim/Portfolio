@@ -23,6 +23,7 @@ import {
 import { arrayMove } from "@dnd-kit/sortable";
 
 import StatisticSection from "@/components/cabinet/StatisticSection";
+import CardsSection from "@/components/cabinet/CardsSection";
 import ContactsSection from "@/components/cabinet/ContactsSection";
 import CoworkersSection from "@/components/cabinet/CoworkersSection";
 import CategoriesSection from "@/components/cabinet/CategoriesSection";
@@ -30,7 +31,7 @@ import SettingsSection from "@/components/cabinet/SettingsSection";
 
 const staticIds = new Set(staticArtworks.map((a) => a.id));
 
-const sections = [{ key: "statistic" }, { key: "categories" }, { key: "contacts" }, { key: "coworkers" }, { key: "settings" }] as const;
+const sections = [{ key: "statistic" }, { key: "cards" }, { key: "categories" }, { key: "contacts" }, { key: "coworkers" }, { key: "settings" }] as const;
 
 export default function CabinetPage() {
   const { isAdmin } = useAdmin();
@@ -138,7 +139,7 @@ export default function CabinetPage() {
   }, []);
 
   useEffect(() => {
-    if (activeSection !== "statistic") return;
+    if (activeSection !== "cards") return;
     fetch("/api/stats").then((r) => r.json()).then(setViewCounts).catch(() => {});
     fetch("/api/artworks").then((r) => r.json()).then((data: Artwork[]) => setDynamicArtworks(data)).catch(() => {});
     fetch("/api/deleted-artworks").then((r) => r.json()).then((data: string[]) => setDeletedIds(new Set(data))).catch(() => {});
@@ -286,7 +287,13 @@ export default function CabinetPage() {
 
       <AnimatePresence>
         {activeSection === "statistic" && (
-          <StatisticSection
+          <StatisticSection />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeSection === "cards" && (
+          <CardsSection
             locale={locale}
             allArtworks={allArtworks}
             sortedArtworks={sortedArtworks}
