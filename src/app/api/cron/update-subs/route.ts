@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   };
 
   const targets = artworks.filter(
-    (a) => a.category === "youtube" && getYoutubeUrl(a)
+    (a) => (a.displayType === "youtube" || (!a.displayType && a.category === "youtube")) && getYoutubeUrl(a)
   );
 
   let updated = 0;

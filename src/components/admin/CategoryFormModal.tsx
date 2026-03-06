@@ -156,7 +156,7 @@ export default function CategoryFormModal({ mode, categories: currentCategories,
   };
 
   const inputClass =
-    "w-full h-[30px] border border-[#c0c0c0] pl-3 pr-3 text-sm outline-none focus:border-text transition-colors";
+    "w-full h-[30px] border border-text-light pl-3 pr-3 text-sm outline-none focus:border-text transition-colors";
   const labelClass =
     "text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary mb-1 block";
 
@@ -241,7 +241,7 @@ export default function CategoryFormModal({ mode, categories: currentCategories,
                     <button
                       type="button"
                       onClick={() => setPreview("")}
-                      className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                      className="text-[12px] text-text-light hover:text-text-muted"
                     >
                       {t("form.changeImage")}
                     </button>

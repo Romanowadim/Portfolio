@@ -109,7 +109,7 @@ export default function ContactPickerModal({ contact: editContact, onClose, onSa
   };
 
   const inputClass =
-    "w-full h-[30px] border border-[#c0c0c0] pl-3 pr-3 text-sm outline-none focus:border-text transition-colors";
+    "w-full h-[30px] border border-text-light pl-3 pr-3 text-sm outline-none focus:border-text transition-colors";
   const labelClass =
     "text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary mb-1 block";
 
@@ -125,7 +125,7 @@ export default function ContactPickerModal({ contact: editContact, onClose, onSa
 
       <button
         onClick={onClose}
-        className="absolute top-[64px] right-[64px] z-10 w-[16px] h-[16px] flex items-center justify-center text-[#808080] hover:text-[#404040] transition-colors"
+        className="absolute top-[64px] right-[64px] z-10 w-[16px] h-[16px] flex items-center justify-center text-text-muted hover:text-text-secondary transition-colors"
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d="M1 1L15 15M15 1L1 15" stroke="currentColor" strokeWidth="1.5" />
@@ -188,7 +188,7 @@ export default function ContactPickerModal({ contact: editContact, onClose, onSa
                   <button
                     type="button"
                     onClick={() => setClientAvatar("")}
-                    className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                    className="text-[12px] text-text-light hover:text-text-muted"
                   >
                     Сменить
                   </button>
@@ -204,7 +204,7 @@ export default function ContactPickerModal({ contact: editContact, onClose, onSa
                 {socials.map((s, i) => (
                   <div key={i} className="flex gap-2 items-center">
                     <select
-                      className="h-[30px] border border-[#c0c0c0] text-sm outline-none px-1"
+                      className="h-[30px] border border-text-light text-sm outline-none px-1"
                       value={s.icon}
                       onChange={(e) => updateSocial(i, "icon", e.target.value)}
                     >
@@ -221,7 +221,7 @@ export default function ContactPickerModal({ contact: editContact, onClose, onSa
                     <button
                       type="button"
                       onClick={() => removeSocial(i)}
-                      className="text-[#c0c0c0] hover:text-text-muted text-sm"
+                      className="text-text-light hover:text-text-muted text-sm"
                     >
                       ✕
                     </button>
@@ -231,7 +231,7 @@ export default function ContactPickerModal({ contact: editContact, onClose, onSa
                   <button
                     type="button"
                     onClick={addSocial}
-                    className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                    className="text-[12px] text-text-light hover:text-text-muted"
                   >
                     + Добавить ссылку
                   </button>

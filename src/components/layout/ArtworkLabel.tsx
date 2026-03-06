@@ -2,9 +2,10 @@
 
 import { motion } from "framer-motion";
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
+import ThemeSwitcher from "@/components/ui/ThemeSwitcher";
 import { usePortfolioPreview } from "@/components/portfolio/PortfolioPreviewContext";
 
-export default function ArtworkLabel({ hideInfo, fadeInfo }: { hideInfo?: boolean; fadeInfo?: boolean }) {
+export default function ArtworkLabel({ hideInfo, fadeInfo, heroLabel }: { hideInfo?: boolean; fadeInfo?: boolean; heroLabel?: { title: string; year: string; tools: string } }) {
   const { isPreviewActive } = usePortfolioPreview();
 
   return (
@@ -14,7 +15,10 @@ export default function ArtworkLabel({ hideInfo, fadeInfo }: { hideInfo?: boolea
       transition={{ delay: 0.3 }}
       className="hidden lg:flex flex-col items-end gap-[83px] fixed top-[48px] right-[3.33vw] z-50"
     >
-      <LanguageSwitcher />
+      <div className="flex items-center gap-2">
+        <ThemeSwitcher />
+        <LanguageSwitcher />
+      </div>
       {!hideInfo && (
         <motion.div
           className="text-right"
@@ -22,13 +26,13 @@ export default function ArtworkLabel({ hideInfo, fadeInfo }: { hideInfo?: boolea
           transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
         >
           <p className="text-[13px] leading-[17px] text-text-light tracking-wide">
-            Self-Portrait
+            {heroLabel?.title || "Self-Portrait"}
           </p>
           <p className="text-[13px] leading-[19px] text-[#ddd] font-semibold">
-            2020
+            {heroLabel?.year || "2020"}
           </p>
           <p className="text-[13px] leading-[15px] text-[#ddd] font-semibold">
-            Procreate | Photoshop
+            {heroLabel?.tools || "Procreate | Photoshop"}
           </p>
         </motion.div>
       )}

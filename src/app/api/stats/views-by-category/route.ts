@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/admin";
-import { readStats } from "@/lib/stats";
-import { readDynamicArtworks, readContacts } from "@/lib/blob";
+import { readCategoryViews } from "@/lib/category-stats";
+import { readCategories } from "@/lib/categories";
 
 async function requireAuth() {
   const cookieStore = await cookies();
@@ -28,40 +28,30 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") ?? "week";
 
-  const [stats, artworks, contacts] = await Promise.all([
-    readStats(),
-    readDynamicArtworks(),
-    readContacts(),
+  const [views, categories] = await Promise.all([
+    readCategoryViews(),
+    readCategories(),
   ]);
-
   const now = new Date();
 
-  // Build contactId → artworkIds map
-  const contactArtworks = new Map<string, string[]>();
-  for (const a of artworks) {
-    if (!a.contactId) continue;
-    const list = contactArtworks.get(a.contactId) || [];
-    list.push(a.id);
-    contactArtworks.set(a.contactId, list);
+  const locale = searchParams.get("locale") ?? "en";
+  const nameMap = new Map<string, string>();
+  for (const cat of categories) {
+    nameMap.set(cat.id, cat.label[locale as "ru" | "en"] || cat.id);
   }
 
-  // For each contact with artworks, collect timestamps and bucket them
-  const result = contacts
-    .filter((c) => contactArtworks.has(c.id))
-    .map((contact) => {
-      const artworkIds = contactArtworks.get(contact.id)!;
+  // Aggregate by top-level category (keys without "/")
+  const aggregated = new Map<string, string[]>();
+  for (const [key, entries] of Object.entries(views)) {
+    const topKey = key.includes("/") ? key.split("/")[0] : key;
+    const existing = aggregated.get(topKey) ?? [];
+    for (const e of entries) existing.push(e.at);
+    aggregated.set(topKey, existing);
+  }
 
-      // Collect all view timestamps for this contact's artworks
-      const timestamps: string[] = [];
-      for (const aid of artworkIds) {
-        const entries = stats[aid];
-        if (!entries) continue;
-        for (const v of entries) {
-          if (typeof v !== "string" && v.at) timestamps.push(v.at);
-        }
-      }
-
-      const totalViews = timestamps.length;
+  const result = Array.from(aggregated.entries())
+    .map(([id, timestamps]) => {
+      const total = timestamps.length;
       const buckets: Bucket[] = [];
 
       if (period === "day") {
@@ -100,14 +90,10 @@ export async function GET(req: Request) {
         }
       }
 
-      return {
-        id: contact.id,
-        name: contact.clientName,
-        totalViews,
-        buckets,
-      };
+      return { id, name: nameMap.get(id) ?? id, total, buckets };
     })
-    .sort((a, b) => b.totalViews - a.totalViews);
+    .filter((e) => e.total > 0)
+    .sort((a, b) => b.total - a.total);
 
-  return NextResponse.json({ contacts: result });
+  return NextResponse.json({ entities: result });
 }

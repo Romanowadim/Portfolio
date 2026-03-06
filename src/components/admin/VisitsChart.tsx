@@ -96,11 +96,11 @@ function SingleChart({ apiUrl, title, icon }: SingleChartProps) {
       {/* Total + period switcher */}
       <div className="flex items-baseline justify-between mb-[16px]">
         <div className="flex items-center gap-[8px]">
-          {icon && <span className="text-[#808080] flex items-center">{icon}</span>}
-          <span className="text-[26px] font-bold tracking-tight text-[#808080]">
+          {icon && <span className="text-text-muted flex items-center">{icon}</span>}
+          <span className="text-[26px] font-bold tracking-tight text-text-muted">
             {loading ? "—" : total.toLocaleString()}
           </span>
-          <span className="text-[12px] font-bold tracking-[2px] uppercase text-[#c0c0c0]">
+          <span className="text-[12px] font-bold tracking-[2px] uppercase text-text-light">
             {title}
           </span>
         </div>
@@ -108,11 +108,11 @@ function SingleChart({ apiUrl, title, icon }: SingleChartProps) {
         <div className="flex items-center gap-[12px]">
           {PERIODS.map((p, i) => (
             <React.Fragment key={p}>
-              {i > 0 && <span className="w-px h-[1em] bg-[#c0c0c0]/40 self-center" />}
+              {i > 0 && <span className="w-px h-[1em] bg-text-light/40 self-center" />}
               <button
                 onClick={() => setPeriod(p)}
                 className={`text-[12px] font-bold tracking-[1.8px] uppercase transition-colors ${
-                  period === p ? "text-[#808080]" : "text-[#c0c0c0] hover:text-[#808080]"
+                  period === p ? "text-text-muted" : "text-text-light hover:text-text-muted"
                 }`}
               >
                 {t(`period.${p}`)}
@@ -128,7 +128,7 @@ function SingleChart({ apiUrl, title, icon }: SingleChartProps) {
           style={{ height: CHART_H + LABEL_H + 4 }}
           className="flex items-center justify-center"
         >
-          <span className="text-[12px] text-[#c0c0c0] tracking-[2px] uppercase animate-pulse">
+          <span className="text-[12px] text-text-light tracking-[2px] uppercase animate-pulse">
             ...
           </span>
         </div>
@@ -139,7 +139,7 @@ function SingleChart({ apiUrl, title, icon }: SingleChartProps) {
             {gridLevels.map(({ frac, pxY, value }) => (
               <span
                 key={frac}
-                className="absolute right-[6px] text-[12px] font-bold text-[#c0c0c0] leading-none -translate-y-1/2"
+                className="absolute right-[6px] text-[12px] font-bold text-text-light leading-none -translate-y-1/2"
                 style={{ top: pxY }}
               >
                 {value}
@@ -164,17 +164,17 @@ function SingleChart({ apiUrl, title, icon }: SingleChartProps) {
               </defs>
 
               {vBands.filter((b) => b.fill).map((b, i) => (
-                <rect key={i} x={b.x1} y={0} width={b.x2 - b.x1} height={CHART_H} fill="#808080" fillOpacity="0.06" />
+                <rect key={i} x={b.x1} y={0} width={b.x2 - b.x1} height={CHART_H} fill="var(--color-text-muted)" fillOpacity="0.06" />
               ))}
 
               {gridLevels.map(({ frac, svgY }) => (
-                <line key={frac} x1={0} y1={svgY} x2={chartW} y2={svgY} stroke="#e0e0e0" strokeWidth="1" strokeDasharray="2 3" />
+                <line key={frac} x1={0} y1={svgY} x2={chartW} y2={svgY} stroke="var(--color-border)" strokeWidth="1" strokeDasharray="2 3" />
               ))}
 
               {data.map((_, i) => {
                 if (i % labelEvery !== 0) return null;
                 const cx = i * (barW + gap) + barW / 2;
-                return <line key={i} x1={cx} y1={0} x2={cx} y2={CHART_H} stroke="#e0e0e0" strokeWidth="0.5" />;
+                return <line key={i} x1={cx} y1={0} x2={cx} y2={CHART_H} stroke="var(--color-border)" strokeWidth="0.5" />;
               })}
 
               {fillPath && (
@@ -194,7 +194,7 @@ function SingleChart({ apiUrl, title, icon }: SingleChartProps) {
               )}
 
               {hoveredIdx !== null && (
-                <line x1={hoveredCx} y1={0} x2={hoveredCx} y2={CHART_H} stroke="#c0c0c0" strokeWidth="1" />
+                <line x1={hoveredCx} y1={0} x2={hoveredCx} y2={CHART_H} stroke="var(--color-text-light)" strokeWidth="1" />
               )}
 
               <rect
@@ -215,8 +215,8 @@ function SingleChart({ apiUrl, title, icon }: SingleChartProps) {
                   transform: "translate(-50%, -50%)",
                 }}
               >
-                <div className="w-[8px] h-[8px] rounded-full bg-[#808080]" />
-                <div className="absolute left-1/2 bottom-full mb-[8px] -translate-x-1/2 bg-white text-[#808080] text-[12px] font-bold tracking-[1.5px] px-[8px] py-[5px] shadow-[0_2px_12px_rgba(0,0,0,0.10)] whitespace-nowrap">
+                <div className="w-[8px] h-[8px] rounded-full bg-text-muted" />
+                <div className="absolute left-1/2 bottom-full mb-[8px] -translate-x-1/2 bg-white text-text-muted text-[12px] font-bold tracking-[1.5px] px-[8px] py-[5px] shadow-[0_2px_12px_rgba(0,0,0,0.10)] whitespace-nowrap">
                   {hovered.count}
                 </div>
               </div>
@@ -230,7 +230,7 @@ function SingleChart({ apiUrl, title, icon }: SingleChartProps) {
                 return (
                   <span
                     key={i}
-                    className="absolute text-[12px] font-bold tracking-[1.8px] uppercase text-[#c0c0c0] -translate-x-1/2 leading-none"
+                    className="absolute text-[12px] font-bold tracking-[1.8px] uppercase text-text-light -translate-x-1/2 leading-none"
                     style={{ left: `${pct}%`, top: 0 }}
                   >
                     {b.label}
@@ -267,11 +267,11 @@ export default function VisitsChart() {
           { label: "ORDER CLICKS", value: summary?.orderClicks },
         ].map(({ label, value }, i) => (
           <div key={i} className="flex-1 bg-white px-[16px] py-[12px]">
-            <div className="text-[10px] font-bold tracking-[1.8px] uppercase text-[#c0c0c0] mb-[4px]">
+            <div className="text-[12px] font-bold tracking-[1.8px] uppercase text-text-light mb-[4px]">
               {label}
             </div>
             <div className="flex items-baseline gap-[8px]">
-              <span className="text-[22px] font-bold tracking-tight text-[#808080]">
+              <span className="text-[22px] font-bold tracking-tight text-text-muted">
                 {value !== undefined ? value.toLocaleString() : "—"}
               </span>
               {i === 3 && (
@@ -285,11 +285,11 @@ export default function VisitsChart() {
       </div>
 
       {/* Two charts side by side */}
-      <div className="flex border border-[#e0e0e0]">
+      <div className="flex border border-border">
         <div className="flex-1 min-w-0 px-[20px] py-[16px]">
           <SingleChart apiUrl="/api/stats/visits" title={t("visits")} icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clipRule="evenodd" /></svg>} />
         </div>
-        <div className="w-px bg-[#e0e0e0] shrink-0" />
+        <div className="w-px bg-border shrink-0" />
         <div className="flex-1 min-w-0 px-[20px] py-[16px]">
           <SingleChart apiUrl="/api/stats/views-chart" title={t("views")} icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path fillRule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z" clipRule="evenodd" /></svg>} />
         </div>

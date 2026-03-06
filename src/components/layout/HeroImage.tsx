@@ -19,7 +19,7 @@ const imgVariants = {
   order: { filter: "brightness(1.13) saturate(0.85)" },
 };
 
-export default function HeroImage({ isFadingOut }: { isFadingOut: boolean }) {
+export default function HeroImage({ isFadingOut, heroImage }: { isFadingOut: boolean; heroImage?: string }) {
   const pathname = usePathname();
   const isAbout = pathname === "/about";
   const isOrder = pathname === "/order";
@@ -54,7 +54,7 @@ export default function HeroImage({ isFadingOut }: { isFadingOut: boolean }) {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <motion.img
-        src="/images/hero.png"
+        src={heroImage || "/images/hero.png"}
         alt="Character illustration"
         initial={imgVariants[variant]}
         animate={imgVariants[isFadingOut ? "about" : variant]}

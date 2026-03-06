@@ -1,22 +1,25 @@
-export type ImagePosition = {
-  width: string;
-  height: string;
-  left: string;
-  top: string;
-};
-
 export type Equipment = {
   id: string;
-  name: string;
+  name: string | { en: string; ru: string };
   brandIcon: string;
   image: string;
-  imagePos: ImagePosition;
-  specKeyWidth: number;
   specs: {
     key: string;
-    value: string;
+    value: string | { en: string; ru: string };
   }[];
 };
+
+/** Resolve name to string for a given locale (backward compatible with plain strings) */
+export function equipmentName(item: Equipment, locale: string): string {
+  if (typeof item.name === "string") return item.name;
+  return locale === "ru" ? item.name.ru : item.name.en;
+}
+
+/** Resolve spec value to string for a given locale */
+export function specValue(value: string | { en: string; ru: string }, locale: string): string {
+  if (typeof value === "string") return value;
+  return locale === "ru" ? value.ru : value.en;
+}
 
 export const equipment: Equipment[] = [
   {
@@ -24,8 +27,6 @@ export const equipment: Equipment[] = [
     name: "IMAC 27-INCH",
     brandIcon: "/images/equipment/apple-logo.svg",
     image: "/images/equipment/imac.png",
-    imagePos: { width: "129.02%", height: "129.02%", left: "-14.12%", top: "-20.39%" },
-    specKeyWidth: 60,
     specs: [
       { key: "os", value: "macOS High Sierra" },
       { key: "cpu", value: "Intel Core i5 3,4 GHz" },
@@ -38,8 +39,6 @@ export const equipment: Equipment[] = [
     name: "PC",
     brandIcon: "/images/equipment/windows-logo.svg",
     image: "/images/equipment/pc.png",
-    imagePos: { width: "87.84%", height: "87.84%", left: "6.08%", top: "0%" },
-    specKeyWidth: 60,
     specs: [
       { key: "os", value: "Windows 10" },
       { key: "cpu", value: "AMD Ryzen 7 2700X 3,7 GHz" },
@@ -52,8 +51,6 @@ export const equipment: Equipment[] = [
     name: "WACOM CINTIQ 22HD",
     brandIcon: "/images/equipment/wacom-logo.svg",
     image: "/images/equipment/wacom.png",
-    imagePos: { width: "113.81%", height: "63.92%", left: "-6.71%", top: "12.55%" },
-    specKeyWidth: 105,
     specs: [
       { key: "diagonal", value: "22-inch" },
       { key: "technology", value: "H-IPS LCD" },
@@ -66,8 +63,6 @@ export const equipment: Equipment[] = [
     name: "IPAD PRO 12,9-INCH",
     brandIcon: "/images/equipment/apple-logo.svg",
     image: "/images/equipment/ipad.png",
-    imagePos: { width: "82.87%", height: "98.04%", left: "8.56%", top: "-5.1%" },
-    specKeyWidth: 60,
     specs: [
       { key: "ios", value: "15.0" },
       { key: "cpu", value: "Apple M1" },

@@ -52,15 +52,15 @@ function LangToggle({ value, onChange }: { value: "en" | "ru"; onChange: (v: "en
       <button
         type="button"
         onClick={() => onChange("en")}
-        className={`text-[12px] font-bold tracking-[2.8px] uppercase transition-colors ${value === "en" ? "text-text-secondary" : "text-[#c0c0c0]"}`}
+        className={`text-[12px] font-bold tracking-[2.8px] uppercase transition-colors ${value === "en" ? "text-text-secondary" : "text-text-light"}`}
       >
         EN
       </button>
-      <span className="text-[#c0c0c0] text-[12px] font-bold">|</span>
+      <span className="text-text-light text-[12px] font-bold">|</span>
       <button
         type="button"
         onClick={() => onChange("ru")}
-        className={`text-[12px] font-bold tracking-[2.8px] uppercase transition-colors ${value === "ru" ? "text-text-secondary" : "text-[#c0c0c0]"}`}
+        className={`text-[12px] font-bold tracking-[2.8px] uppercase transition-colors ${value === "ru" ? "text-text-secondary" : "text-text-light"}`}
       >
         RU
       </button>
@@ -136,6 +136,8 @@ export default function ArtworkFormModal({
   const [clientRole, setClientRole] = useState(editArtwork?.clientRole || "");
   const [clientAvatar, setClientAvatar] = useState(editArtwork?.clientAvatar || "");
   const [socials, setSocials] = useState<{ icon: string; url: string }[]>(editArtwork?.clientSocials || []);
+  const [displayType, setDisplayType] = useState<"youtube" | "default">(editArtwork?.displayType || (editArtwork?.category === "youtube" ? "youtube" : "default"));
+  const isYoutubeType = displayType === "youtube";
   const [subscribers, setSubscribers] = useState(editArtwork?.subscribers || "");
   const [subsFetching, setSubsFetching] = useState(false);
   const subsFetchingRef = useRef(false);
@@ -212,7 +214,7 @@ export default function ArtworkFormModal({
   const applyContact = (contact: Contact) => {
     setLinkedContactId(contact.id);
     setClientExpanded(true);
-    if (cat === "youtube") {
+    if (isYoutubeType) {
       const youtubeUrl = contact.clientSocials?.find((s) => s.icon === "youtube" && s.url)?.url;
       if (youtubeUrl) fetchSubs(youtubeUrl);
     }
@@ -329,7 +331,7 @@ export default function ArtworkFormModal({
     const next = [...socials];
     next[i] = { ...next[i], [field]: val };
     setSocials(next);
-    if (field === "icon" && val === "youtube" && next[i].url && cat === "youtube") {
+    if (field === "icon" && val === "youtube" && next[i].url && isYoutubeType) {
       fetchSubs(next[i].url);
     }
   };
@@ -356,6 +358,7 @@ export default function ArtworkFormModal({
       tools: tools || undefined,
       category: cat,
       subcategory: subcat || undefined,
+      displayType: displayType === "youtube" ? "youtube" : undefined,
       // Contact by reference vs manual fields
       contactId: linkedContactId || undefined,
       client: linkedContactId ? undefined : (client || undefined),
@@ -423,8 +426,55 @@ export default function ArtworkFormModal({
     }
   };
 
+  /* ── Auto-fill with placeholder data ── */
+  const autoFill = () => {
+    const loremTitles = ["Концепт-арт замка", "Портрет персонажа", "Пейзаж будущего", "Абстрактная композиция", "Дизайн интерфейса", "Иллюстрация к книге"];
+    const loremTitlesEn = ["Castle Concept Art", "Character Portrait", "Futuristic Landscape", "Abstract Composition", "Interface Design", "Book Illustration"];
+    const toolsList = ["Photoshop", "Illustrator", "Procreate", "Figma", "Krita", "Midjourney"];
+    const reviews = [
+      "Отличная работа, очень понравился результат. Рекомендую автора всем знакомым.",
+      "Профессиональный подход, всё сделано качественно и в срок.",
+      "Превзошло все ожидания, буду обращаться ещё.",
+    ];
+    const reviewsEn = [
+      "Great work, really loved the result. Highly recommend the artist.",
+      "Professional approach, everything done with quality and on time.",
+      "Exceeded all expectations, will definitely come back.",
+    ];
+    const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+    const randYear = String(2020 + Math.floor(Math.random() * 6));
+    const randHours = String(5 + Math.floor(Math.random() * 95));
+    const w = 1920 + Math.floor(Math.random() * 3) * 1080;
+    const h = 1080 + Math.floor(Math.random() * 2) * 840;
+    const randTools = Array.from({ length: 1 + Math.floor(Math.random() * 3) }, () => pick(toolsList))
+      .filter((v, i, a) => a.indexOf(v) === i).join(" | ");
+
+    // Gray placeholder as data URL
+    const canvas = document.createElement("canvas");
+    canvas.width = 800;
+    canvas.height = 600;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = `hsl(${Math.floor(Math.random() * 360)}, 10%, ${65 + Math.floor(Math.random() * 15)}%)`;
+    ctx.fillRect(0, 0, 800, 600);
+    ctx.fillStyle = "rgba(0,0,0,0.15)";
+    ctx.font = "bold 32px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("PLACEHOLDER", 400, 310);
+    const placeholderUrl = canvas.toDataURL("image/png");
+
+    setImageUrl(placeholderUrl);
+    setResolution(`${w}x${h}`);
+    setTitleRu(pick(loremTitles));
+    setTitleEn(pick(loremTitlesEn));
+    setYear(randYear);
+    setHours(randHours);
+    setTools(randTools);
+    setReviewRu(pick(reviews));
+    setReviewEn(pick(reviewsEn));
+  };
+
   const inputClass =
-    "w-full h-[30px] border border-[#c0c0c0] pl-3 pr-3 text-sm outline-none focus:border-text transition-colors";
+    "w-full h-[30px] border border-text-light pl-3 pr-3 text-sm outline-none focus:border-text transition-colors";
   const labelClass =
     "text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary mb-2 block";
 
@@ -463,7 +513,7 @@ export default function ArtworkFormModal({
           <button
             type="button"
             onClick={onRemove}
-            className="absolute top-2 right-2 w-6 h-6 bg-white/80 rounded-full flex items-center justify-center text-[12px] text-[#808080] hover:text-text transition-colors"
+            className="absolute top-2 right-2 w-6 h-6 bg-white/80 rounded-full flex items-center justify-center text-[12px] text-text-muted hover:text-text transition-colors"
           >
             ✕
           </button>
@@ -495,9 +545,9 @@ export default function ArtworkFormModal({
             <div className="text-white/60 mb-4">{icon}</div>
             <span className="text-white/60 text-[24px] font-light mb-4">+</span>
             <span className="text-white text-[12px] font-bold tracking-[2.8px] uppercase">{label}</span>
-            <span className="text-white/60 text-[11px] tracking-[1.5px] mt-2">{t("form.clickOrDrop")}</span>
+            <span className="text-white/60 text-[12px] tracking-[1.5px] mt-2">{t("form.clickOrDrop")}</span>
             {!isMain && (
-              <span className="text-white/40 text-[11px] tracking-[1.5px] mt-1">{t("form.optional")}</span>
+              <span className="text-white/40 text-[12px] tracking-[1.5px] mt-1">{t("form.optional")}</span>
             )}
           </>
         )}
@@ -529,19 +579,30 @@ export default function ArtworkFormModal({
           onClick={(e) => e.stopPropagation()}
         >
           {/* ── LEFT PANEL: images ── */}
-          <div className="flex-1 bg-[#c0c0c0] flex flex-col gap-[22px] p-[22px] min-w-0">
+          <div className="flex-1 bg-text-light flex flex-col gap-[22px] p-[22px] min-w-0">
             {renderDropZone("main", imageUrl, mainDragOver, mainUploading, () => { setImageUrl(""); setThumbnailUrl(""); })}
             {renderDropZone("sketch", sketchUrl, sketchDragOver, sketchUploading, () => setSketchUrl(""))}
           </div>
 
           {/* ── RIGHT PANEL: form ── */}
           <div className="w-[540px] shrink-0 bg-white overflow-y-auto px-[40px] py-[40px]">
-            <h2 className="text-sm font-bold tracking-[2.8px] uppercase text-text-muted mb-8">
-              {isEdit ? t("editArtwork") : t("addArtwork")}
-            </h2>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-sm font-bold tracking-[2.8px] uppercase text-text-muted">
+                {isEdit ? t("editArtwork") : t("addArtwork")}
+              </h2>
+              {!isEdit && (
+                <button
+                  type="button"
+                  onClick={autoFill}
+                  className="h-[28px] px-3 text-[11px] font-bold tracking-[1.5px] uppercase border border-dashed border-text-light text-text-light hover:text-text-muted hover:border-text-muted transition-colors"
+                >
+                  Auto-fill
+                </button>
+              )}
+            </div>
 
             {/* Category / Subcategory */}
-            <div className="bg-[#e8e8e8] -mx-[40px] px-[40px] py-4 mb-6">
+            <div className="bg-bg-dark -mx-[40px] px-[40px] py-4 mb-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={labelClass}>{t("form.category")}</label>
@@ -572,6 +633,25 @@ export default function ArtworkFormModal({
                   </select>
                 </div>
               </div>
+              <div className="mt-3">
+                <label className={labelClass}>Display type</label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDisplayType("default")}
+                    className={`h-[30px] px-4 text-[12px] font-bold tracking-[1.8px] uppercase border transition-colors ${displayType === "default" ? "border-text-muted text-text-muted" : "border-text-light text-text-light hover:border-text-muted hover:text-text-muted"}`}
+                  >
+                    Illustration
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDisplayType("youtube")}
+                    className={`h-[30px] px-4 text-[12px] font-bold tracking-[1.8px] uppercase border transition-colors ${displayType === "youtube" ? "border-text-muted text-text-muted" : "border-text-light text-text-light hover:border-text-muted hover:text-text-muted"}`}
+                  >
+                    YouTube
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="flex flex-col gap-6">
@@ -587,15 +667,15 @@ export default function ArtworkFormModal({
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={thumbnailUrl} alt="" className="w-full h-full object-cover" />
                       </div>
-                      <div className="flex items-center divide-x divide-[#e8e8e8] text-[12px]">
+                      <div className="flex items-center divide-x divide-bg-dark text-[12px]">
                         <button
                           type="button"
                           onClick={() => setShowCropper(true)}
-                          className="text-[#c0c0c0] hover:text-text-muted pr-2 transition-colors"
+                          className="text-text-light hover:text-text-muted pr-2 transition-colors"
                         >
                           {t("form.recrop")}
                         </button>
-                        <label className="text-[#c0c0c0] hover:text-text-muted px-2 cursor-pointer transition-colors">
+                        <label className="text-text-light hover:text-text-muted px-2 cursor-pointer transition-colors">
                           {thumbnailUploading ? "..." : t("form.reupload")}
                           <input
                             type="file"
@@ -610,7 +690,7 @@ export default function ArtworkFormModal({
                         <button
                           type="button"
                           onClick={() => setThumbnailUrl("")}
-                          className="text-[#c0c0c0] hover:text-[#F87777] pl-2 transition-colors"
+                          className="text-text-light hover:text-[#F87777] pl-2 transition-colors"
                         >
                           {t("form.delete")}
                         </button>
@@ -621,11 +701,11 @@ export default function ArtworkFormModal({
                       <button
                         type="button"
                         onClick={() => setShowCropper(true)}
-                        className="text-[12px] text-[#c0c0c0] hover:text-text-muted border border-[#c0c0c0] h-[30px] px-4 transition-colors"
+                        className="text-[12px] text-text-light hover:text-text-muted border border-text-light h-[30px] px-4 transition-colors"
                       >
                         {t("form.cropThumbnail")}
                       </button>
-                      <label className="text-[12px] text-[#c0c0c0] hover:text-text-muted border border-dashed border-[#c0c0c0] h-[30px] px-4 flex items-center cursor-pointer transition-colors">
+                      <label className="text-[12px] text-text-light hover:text-text-muted border border-dashed border-text-light h-[30px] px-4 flex items-center cursor-pointer transition-colors">
                         {thumbnailUploading ? "..." : t("form.uploadThumbnail")}
                         <input
                           type="file"
@@ -653,14 +733,14 @@ export default function ArtworkFormModal({
                       <button
                         type="button"
                         onClick={() => setLogoUrl("")}
-                        className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                        className="text-[12px] text-text-light hover:text-text-muted"
                       >
                         {t("form.changeImage")}
                       </button>
                     </div>
                   ) : (
-                    <label className="inline-flex h-[30px] px-4 border border-dashed border-[#c0c0c0] items-center cursor-pointer hover:border-text-muted transition-colors">
-                      <span className="text-[12px] text-[#c0c0c0]">
+                    <label className="inline-flex h-[30px] px-4 border border-dashed border-text-light items-center cursor-pointer hover:border-text-muted transition-colors">
+                      <span className="text-[12px] text-text-light">
                         {logoUploading ? "..." : "+ SVG"}
                       </span>
                       <input
@@ -678,7 +758,7 @@ export default function ArtworkFormModal({
               )}
 
               {/* Separator */}
-              <div className="h-px bg-[#e8e8e8]" />
+              <div className="h-px bg-bg-dark" />
 
               {/* Name with lang toggle */}
               <div>
@@ -704,7 +784,7 @@ export default function ArtworkFormModal({
               </div>
 
               {/* Subscribers (YouTube only) */}
-              {cat === "youtube" && (
+              {isYoutubeType && (
                 <div>
                   <label className={labelClass}>{t("form.subscribers")}</label>
                   <div className="flex gap-2">
@@ -724,7 +804,7 @@ export default function ArtworkFormModal({
                         if (!youtubeUrl) { setSubsChannelInput(" "); return; }
                         fetchSubs(youtubeUrl);
                       }}
-                      className="h-[30px] px-3 border border-[#c0c0c0] text-[12px] text-[#808080] hover:border-[#808080] transition-colors disabled:opacity-40 shrink-0"
+                      className="h-[30px] px-3 border border-text-light text-[12px] text-text-muted hover:border-text-muted transition-colors disabled:opacity-40 shrink-0"
                     >
                       {subsFetching ? "..." : "↓"}
                     </button>
@@ -739,7 +819,7 @@ export default function ArtworkFormModal({
                     />
                   )}
                   {subsError && (
-                    <p className="text-[11px] text-red-400 mt-1">{subsError}</p>
+                    <p className="text-[12px] text-red-400 mt-1">{subsError}</p>
                   )}
                 </div>
               )}
@@ -758,15 +838,15 @@ export default function ArtworkFormModal({
                 </div>
                 <div>
                   <label className={labelClass}>{t("form.hours")}</label>
-                  <div className="w-full flex items-center h-[30px] border border-[#c0c0c0] focus-within:border-text transition-colors">
-                    <span className="pl-2 text-sm text-[#c0c0c0] select-none shrink-0">~</span>
+                  <div className="w-full flex items-center h-[30px] border border-text-light focus-within:border-text transition-colors">
+                    <span className="pl-2 text-sm text-text-light select-none shrink-0">~</span>
                     <input
                       className="min-w-0 flex-1 h-full text-sm outline-none px-1"
                       value={hours}
                       onChange={(e) => setHours(e.target.value.replace(/[^0-9]/g, ""))}
                       placeholder="20"
                     />
-                    <span className="pr-2 text-sm text-[#c0c0c0] select-none shrink-0">h</span>
+                    <span className="pr-2 text-sm text-text-light select-none shrink-0">h</span>
                   </div>
                 </div>
                 </div>
@@ -782,7 +862,7 @@ export default function ArtworkFormModal({
               </div>
 
               {/* Separator */}
-              <div className="h-px bg-[#e8e8e8]" />
+              <div className="h-px bg-bg-dark" />
 
               {/* Client info (collapsible) */}
               <div>
@@ -798,7 +878,7 @@ export default function ArtworkFormModal({
                 {!linkedContactId && (
                   <div className="flex gap-2 items-center mt-3">
                     <select
-                      className="flex-1 h-[30px] border border-[#c0c0c0] text-sm outline-none px-2 text-[#808080]"
+                      className="flex-1 h-[30px] border border-text-light text-sm outline-none px-2 text-text-muted"
                       value=""
                       onChange={(e) => {
                         const contact = contacts.find((c) => c.id === e.target.value);
@@ -813,7 +893,7 @@ export default function ArtworkFormModal({
                     <button
                       type="button"
                       onClick={() => setShowContactModal(true)}
-                      className="w-[30px] h-[30px] border border-[#c0c0c0] text-[#808080] hover:border-[#808080] hover:text-text-muted flex items-center justify-center text-lg leading-none shrink-0 transition-colors"
+                      className="w-[30px] h-[30px] border border-text-light text-text-muted hover:border-text-muted hover:text-text-muted flex items-center justify-center text-lg leading-none shrink-0 transition-colors"
                     >
                       +
                     </button>
@@ -822,15 +902,15 @@ export default function ArtworkFormModal({
 
                 {/* Linked contact card */}
                 {linkedContactId && linkedContact && (
-                  <div className="mt-3 flex items-center gap-3 bg-[#f5f5f5] px-4 py-3">
+                  <div className="mt-3 flex items-center gap-3 bg-bg px-4 py-3">
                     {linkedContact.clientAvatar && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={linkedContact.clientAvatar} alt="" className="w-[40px] h-[40px] rounded-full object-cover shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[12px] font-bold tracking-[1.2px] text-[#808080] uppercase truncate">{linkedContact.clientName}</p>
+                      <p className="text-[12px] font-bold tracking-[1.2px] text-text-muted uppercase truncate">{linkedContact.clientName}</p>
                       {(linkedContact.client || linkedContact.clientRole) && (
-                        <p className="text-[11px] text-[#c0c0c0] tracking-[1px] truncate">
+                        <p className="text-[12px] text-text-light tracking-[1px] truncate">
                           {[linkedContact.clientRole, linkedContact.client].filter(Boolean).join(" \u00B7 ")}
                         </p>
                       )}
@@ -846,7 +926,7 @@ export default function ArtworkFormModal({
                     <button
                       type="button"
                       onClick={unlinkContact}
-                      className="text-[#c0c0c0] hover:text-text-muted text-sm shrink-0"
+                      className="text-text-light hover:text-text-muted text-sm shrink-0"
                     >
                       ✕
                     </button>
@@ -856,11 +936,11 @@ export default function ArtworkFormModal({
                 {/* Linked but contact not found */}
                 {linkedContactId && !linkedContact && (
                   <div className="mt-3 flex items-center gap-3 bg-[#fff5f5] px-4 py-3">
-                    <p className="text-[11px] text-red-400 flex-1">Contact not found (id: {linkedContactId})</p>
+                    <p className="text-[12px] text-red-400 flex-1">Contact not found (id: {linkedContactId})</p>
                     <button
                       type="button"
                       onClick={unlinkContact}
-                      className="text-[#c0c0c0] hover:text-text-muted text-sm shrink-0"
+                      className="text-text-light hover:text-text-muted text-sm shrink-0"
                     >
                       ✕
                     </button>
@@ -905,7 +985,7 @@ export default function ArtworkFormModal({
                           <button
                             type="button"
                             onClick={() => setClientAvatar("")}
-                            className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                            className="text-[12px] text-text-light hover:text-text-muted"
                           >
                             {t("form.changeImage")}
                           </button>
@@ -922,7 +1002,7 @@ export default function ArtworkFormModal({
                         {socials.map((s, i) => (
                           <div key={i} className="flex gap-2 items-center">
                             <select
-                              className="h-[30px] border border-[#c0c0c0] text-sm outline-none px-1"
+                              className="h-[30px] border border-text-light text-sm outline-none px-1"
                               value={s.icon}
                               onChange={(e) =>
                                 updateSocial(i, "icon", e.target.value)
@@ -941,7 +1021,7 @@ export default function ArtworkFormModal({
                                 updateSocial(i, "url", e.target.value)
                               }
                               onBlur={() => {
-                                if (s.icon === "youtube" && s.url && cat === "youtube") {
+                                if (s.icon === "youtube" && s.url && isYoutubeType) {
                                   fetchSubs(s.url);
                                 }
                               }}
@@ -950,7 +1030,7 @@ export default function ArtworkFormModal({
                             <button
                               type="button"
                               onClick={() => removeSocial(i)}
-                              className="text-[#c0c0c0] hover:text-text-muted text-sm"
+                              className="text-text-light hover:text-text-muted text-sm"
                             >
                               ✕
                             </button>
@@ -960,7 +1040,7 @@ export default function ArtworkFormModal({
                           <button
                             type="button"
                             onClick={addSocial}
-                            className="text-[12px] text-[#c0c0c0] hover:text-text-muted"
+                            className="text-[12px] text-text-light hover:text-text-muted"
                           >
                             + {t("form.addSocial")}
                           </button>
@@ -972,7 +1052,7 @@ export default function ArtworkFormModal({
               </div>
 
               {/* Separator */}
-              <div className="h-px bg-[#e8e8e8]" />
+              <div className="h-px bg-bg-dark" />
 
               {/* Review / Description with lang toggle */}
               <div>
@@ -992,14 +1072,14 @@ export default function ArtworkFormModal({
                 </div>
                 {reviewLang === "en" ? (
                   <textarea
-                    className="w-full h-[80px] bg-[#f5f5f5] text-sm outline-none resize-none p-3"
+                    className="w-full h-[80px] bg-bg text-sm outline-none resize-none p-3"
                     value={reviewEn}
                     onChange={(e) => setReviewEn(e.target.value)}
                     placeholder="EN"
                   />
                 ) : (
                   <textarea
-                    className="w-full h-[80px] bg-[#f5f5f5] text-sm outline-none resize-none p-3"
+                    className="w-full h-[80px] bg-bg text-sm outline-none resize-none p-3"
                     value={reviewRu}
                     onChange={(e) => setReviewRu(e.target.value)}
                     placeholder="RU"
@@ -1012,21 +1092,21 @@ export default function ArtworkFormModal({
                 <label className={labelClass}>{t("form.coworkers")}</label>
                 <div className="flex flex-col gap-2">
                   {selectedCoworkers.map((cw, i) => (
-                    <div key={cw.id} className="flex items-center gap-2 bg-[#f5f5f5] px-3 py-2">
+                    <div key={cw.id} className="flex items-center gap-2 bg-bg px-3 py-2">
                       {cw.avatar && (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={cw.avatar} alt="" className="w-[24px] h-[24px] rounded-full object-cover shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-bold tracking-[1.2px] text-[#808080] uppercase truncate">{cw.name}</p>
+                        <p className="text-[12px] font-bold tracking-[1.2px] text-text-muted uppercase truncate">{cw.name}</p>
                         {cw.role && (
-                          <p className="text-[11px] text-[#c0c0c0] tracking-[1px] uppercase truncate">{cw.role}</p>
+                          <p className="text-[12px] text-text-light tracking-[1px] uppercase truncate">{cw.role}</p>
                         )}
                       </div>
                       <button
                         type="button"
                         onClick={() => setSelectedCoworkers((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="text-[#c0c0c0] hover:text-text-muted text-sm shrink-0"
+                        className="text-text-light hover:text-text-muted text-sm shrink-0"
                       >
                         ✕
                       </button>
@@ -1034,7 +1114,7 @@ export default function ArtworkFormModal({
                   ))}
                   <div className="flex gap-2 items-center">
                     <select
-                      className="flex-1 h-[30px] border border-[#c0c0c0] text-sm outline-none px-2 text-[#808080]"
+                      className="flex-1 h-[30px] border border-text-light text-sm outline-none px-2 text-text-muted"
                       value=""
                       onChange={(e) => {
                         const cw = coworkersList.find((c) => c.id === e.target.value);
@@ -1053,7 +1133,7 @@ export default function ArtworkFormModal({
                     <button
                       type="button"
                       onClick={() => setShowCoworkerModal(true)}
-                      className="w-[30px] h-[30px] border border-[#c0c0c0] text-[#808080] hover:border-[#808080] hover:text-text-muted flex items-center justify-center text-lg leading-none shrink-0 transition-colors"
+                      className="w-[30px] h-[30px] border border-text-light text-text-muted hover:border-text-muted hover:text-text-muted flex items-center justify-center text-lg leading-none shrink-0 transition-colors"
                     >
                       +
                     </button>
@@ -1062,7 +1142,7 @@ export default function ArtworkFormModal({
               </div>
 
               {/* Separator */}
-              <div className="h-px bg-[#e8e8e8]" />
+              <div className="h-px bg-bg-dark" />
 
               {/* Programs */}
               <div>

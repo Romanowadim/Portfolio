@@ -121,7 +121,7 @@ export default function ImageCropper({ imageUrl, onCropped }: Props) {
   return (
     <div ref={containerRef} className="select-none">
       {!ready && (
-        <div className="h-[200px] flex items-center justify-center text-[#c0c0c0] text-sm">
+        <div className="h-[200px] flex items-center justify-center text-text-light text-sm">
           Loading...
         </div>
       )}
@@ -177,7 +177,7 @@ export default function ImageCropper({ imageUrl, onCropped }: Props) {
 
           {/* Zoom slider */}
           <div className="flex items-center gap-[10px] mt-3">
-            <span className="text-[10px] font-bold tracking-[1.5px] uppercase text-[#c0c0c0] shrink-0 w-[36px]">
+            <span className="text-[12px] font-bold tracking-[1.5px] uppercase text-text-light shrink-0 w-[36px]">
               zoom
             </span>
             <input
@@ -187,10 +187,10 @@ export default function ImageCropper({ imageUrl, onCropped }: Props) {
               step={1}
               value={crop.size}
               onChange={(e) => handleZoom(Number(e.target.value))}
-              className="flex-1 accent-[#808080]"
+              className="flex-1 accent-text-muted"
               style={{ height: 2 }}
             />
-            <span className="text-[10px] font-bold tracking-[1px] text-[#c0c0c0] shrink-0 w-[56px] text-right">
+            <span className="text-[12px] font-bold tracking-[1px] text-text-light shrink-0 w-[56px] text-right">
               {crop.size}px
             </span>
           </div>
@@ -199,7 +199,7 @@ export default function ImageCropper({ imageUrl, onCropped }: Props) {
           <button
             onClick={handleConfirm}
             disabled={uploading}
-            className="mt-3 h-[30px] px-4 text-[12px] font-bold tracking-[2.8px] uppercase text-[#c0c0c0] border border-[#c0c0c0] hover:text-text-muted hover:border-text-muted transition-colors disabled:opacity-50"
+            className="mt-3 h-[30px] px-4 text-[12px] font-bold tracking-[2.8px] uppercase text-text-light border border-text-light hover:text-text-muted hover:border-text-muted transition-colors disabled:opacity-50"
           >
             {uploading ? "..." : "CROP"}
           </button>

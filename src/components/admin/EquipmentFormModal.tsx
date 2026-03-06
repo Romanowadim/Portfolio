@@ -5,6 +5,16 @@ import { motion } from "framer-motion";
 import type { Equipment } from "@/data/equipment";
 import ImageUpload from "./ImageUpload";
 
+function LangToggle({ value, onChange }: { value: "en" | "ru"; onChange: (v: "en" | "ru") => void }) {
+  return (
+    <span className="inline-flex gap-1">
+      <button type="button" onClick={() => onChange("en")} className={`text-[12px] font-bold tracking-[2.8px] uppercase transition-colors ${value === "en" ? "text-text-secondary" : "text-text-light"}`}>EN</button>
+      <span className="text-text-light text-[12px] font-bold">|</span>
+      <button type="button" onClick={() => onChange("ru")} className={`text-[12px] font-bold tracking-[2.8px] uppercase transition-colors ${value === "ru" ? "text-text-secondary" : "text-text-light"}`}>RU</button>
+    </span>
+  );
+}
+
 type Props = {
   equipment?: Equipment;
   onClose: () => void;
@@ -15,12 +25,20 @@ type Props = {
 export default function EquipmentFormModal({ equipment: editItem, onClose, onSaved, onDeleted }: Props) {
   const isEdit = !!editItem;
 
-  const [name, setName] = useState(editItem?.name || "");
+  const editName = editItem?.name;
+  const [nameEn, setNameEn] = useState(typeof editName === "object" ? editName.en : (editName || ""));
+  const [nameRu, setNameRu] = useState(typeof editName === "object" ? editName.ru : "");
+  const [nameLang, setNameLang] = useState<"en" | "ru">("en");
   const [brandIcon, setBrandIcon] = useState(editItem?.brandIcon || "");
   const [image, setImage] = useState(editItem?.image || "");
-  const [imagePos, setImagePos] = useState(editItem?.imagePos || { width: "100%", height: "100%", left: "0%", top: "0%" });
-  const [specKeyWidth, setSpecKeyWidth] = useState(editItem?.specKeyWidth || 60);
-  const [specs, setSpecs] = useState<{ key: string; value: string }[]>(editItem?.specs || []);
+  const [specs, setSpecs] = useState<{ key: string; valueEn: string; valueRu: string }[]>(
+    (editItem?.specs || []).map((s) => ({
+      key: s.key,
+      valueEn: typeof s.value === "object" ? s.value.en : s.value,
+      valueRu: typeof s.value === "object" ? s.value.ru : "",
+    }))
+  );
+  const [specLang, setSpecLang] = useState<"en" | "ru">("en");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -34,9 +52,9 @@ export default function EquipmentFormModal({ equipment: editItem, onClose, onSav
     };
   }, [onClose]);
 
-  const addSpec = () => setSpecs([...specs, { key: "", value: "" }]);
+  const addSpec = () => setSpecs([...specs, { key: "", valueEn: "", valueRu: "" }]);
 
-  const updateSpec = (i: number, field: "key" | "value", val: string) => {
+  const updateSpec = (i: number, field: "key" | "valueEn" | "valueRu", val: string) => {
     const next = [...specs];
     next[i] = { ...next[i], [field]: val };
     setSpecs(next);
@@ -45,17 +63,20 @@ export default function EquipmentFormModal({ equipment: editItem, onClose, onSav
   const removeSpec = (i: number) => setSpecs(specs.filter((_, idx) => idx !== i));
 
   const handleSave = async () => {
-    if (!name.trim()) return;
+    if (!nameEn.trim()) return;
     setSaving(true);
     setError("");
     const item: Equipment = {
       id: editItem?.id || `eq-${Date.now()}`,
-      name: name.trim(),
+      name: nameRu.trim() ? { en: nameEn.trim(), ru: nameRu.trim() } : nameEn.trim(),
       brandIcon,
       image,
-      imagePos,
-      specKeyWidth,
-      specs: specs.filter((s) => s.key || s.value),
+      specs: specs
+        .filter((s) => s.key || s.valueEn)
+        .map((s) => ({
+          key: s.key,
+          value: s.valueRu.trim() ? { en: s.valueEn.trim(), ru: s.valueRu.trim() } : s.valueEn.trim(),
+        })),
     };
     try {
       const res = await fetch("/api/equipment", {
@@ -142,12 +163,15 @@ export default function EquipmentFormModal({ equipment: editItem, onClose, onSav
 
           <div className="flex flex-col gap-5">
             <div>
-              <label className={labelClass}>Name *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary">Name *</label>
+                <LangToggle value={nameLang} onChange={setNameLang} />
+              </div>
               <input
                 className={inputClass}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="IMAC 27-INCH"
+                value={nameLang === "en" ? nameEn : nameRu}
+                onChange={(e) => nameLang === "en" ? setNameEn(e.target.value) : setNameRu(e.target.value)}
+                placeholder={nameLang === "en" ? "IMAC 27-INCH" : "ИМАК 27 ДЮЙМОВ"}
                 autoFocus
               />
             </div>
@@ -174,74 +198,52 @@ export default function EquipmentFormModal({ equipment: editItem, onClose, onSav
             <div>
               <label className={labelClass}>Image</label>
               {image ? (
-                <div className="flex items-center gap-3">
-                  <div className="relative w-[80px] h-[80px] overflow-hidden bg-[#f5f5f5]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={image} alt="" className="w-full h-full object-contain" />
-                  </div>
+                <div className="relative aspect-square w-full overflow-hidden bg-[#f5f5f5]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={image} alt="" className="w-full h-full object-contain" />
                   <button
                     type="button"
                     onClick={() => setImage("")}
-                    className="text-[12px] text-text-light hover:text-text-muted"
+                    className="absolute top-[8px] right-[8px] w-[24px] h-[24px] bg-white/80 rounded-full flex items-center justify-center text-[12px] text-text-muted hover:text-text transition-colors"
                   >
-                    Change
+                    ✕
                   </button>
                 </div>
               ) : (
-                <ImageUpload onUploaded={setImage} square sizeClassName="w-[80px] h-[80px]" />
+                <ImageUpload onUploaded={setImage} square sizeClassName="aspect-square w-full" />
               )}
             </div>
 
             <div>
-              <label className={labelClass}>Image Position</label>
-              <div className="grid grid-cols-4 gap-2">
-                {(["width", "height", "left", "top"] as const).map((field) => (
-                  <div key={field}>
-                    <span className="text-[10px] text-text-light uppercase">{field}</span>
-                    <input
-                      className={inputClass}
-                      value={imagePos[field]}
-                      onChange={(e) => setImagePos({ ...imagePos, [field]: e.target.value })}
-                      placeholder="100%"
-                    />
-                  </div>
-                ))}
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary">Specs</label>
+                <LangToggle value={specLang} onChange={setSpecLang} />
               </div>
-            </div>
-
-            <div>
-              <label className={labelClass}>Spec Key Width (px)</label>
-              <input
-                className={inputClass}
-                type="number"
-                value={specKeyWidth}
-                onChange={(e) => setSpecKeyWidth(Number(e.target.value) || 60)}
-              />
-            </div>
-
-            <div>
-              <label className={labelClass}>Specs</label>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-4">
                 {specs.map((s, i) => (
                   <div key={i} className="flex gap-2 items-center">
-                    <input
-                      className={`${inputClass} w-[100px] shrink-0`}
-                      value={s.key}
-                      onChange={(e) => updateSpec(i, "key", e.target.value)}
-                      placeholder="key"
-                    />
-                    <input
-                      className={`${inputClass} flex-1`}
-                      value={s.value}
-                      onChange={(e) => updateSpec(i, "value", e.target.value)}
-                      placeholder="value"
-                    />
+                    <div className="flex-1 flex flex-col gap-1">
+                      <input
+                        className={inputClass}
+                        value={s.key}
+                        onChange={(e) => updateSpec(i, "key", e.target.value)}
+                        placeholder="key"
+                      />
+                      <input
+                        className={inputClass}
+                        value={specLang === "en" ? s.valueEn : s.valueRu}
+                        onChange={(e) => updateSpec(i, specLang === "en" ? "valueEn" : "valueRu", e.target.value)}
+                        placeholder={specLang === "en" ? "value" : "значение"}
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeSpec(i)}
-                      className="text-text-light hover:text-text-muted text-sm shrink-0"
+                      className="w-[30px] h-[30px] shrink-0 flex items-center justify-center text-text-light hover:text-red-400 transition-colors"
                     >
-                      ✕
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                        <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.5" />
+                      </svg>
                     </button>
                   </div>
                 ))}
@@ -269,7 +271,7 @@ export default function EquipmentFormModal({ equipment: editItem, onClose, onSav
               )}
               <button
                 onClick={handleSave}
-                disabled={saving || !name.trim()}
+                disabled={saving || !nameEn.trim()}
                 className="h-[40px] flex-1 text-sm font-bold tracking-[2.8px] uppercase bg-text-muted text-white hover:bg-text transition-colors disabled:opacity-30"
               >
                 {saving ? "..." : isEdit ? "UPDATE" : "SAVE"}

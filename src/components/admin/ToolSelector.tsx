@@ -46,7 +46,7 @@ export default function ToolSelector({ value, onChange }: Props) {
   const [hovered, setHovered] = useState<string | null>(null);
 
   return (
-    <div className="flex items-center gap-[16px]">
+    <div className="flex items-center flex-wrap gap-[12px]">
       {tools.map((tool) => {
         const isSelected = selected.has(tool.key);
         return (
@@ -71,7 +71,7 @@ export default function ToolSelector({ value, onChange }: Props) {
               />
             </button>
             {hovered === tool.key && (
-              <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white shadow-sm px-2 py-1 text-[12px] text-[#808080] rounded z-10">
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-white shadow-sm px-2 py-1 text-[12px] text-text-muted rounded z-10">
                 {tool.label}
               </div>
             )}

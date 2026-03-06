@@ -8,9 +8,11 @@ type Props = {
   compact?: boolean;
   square?: boolean;
   label?: string;
+  sizeClassName?: string;
+  noPreview?: boolean;
 };
 
-export default function ImageUpload({ onUploaded, compact, square, label }: Props) {
+export default function ImageUpload({ onUploaded, compact, square, label, sizeClassName, noPreview }: Props) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
@@ -32,7 +34,7 @@ export default function ImageUpload({ onUploaded, compact, square, label }: Prop
           return;
         }
         const data = await res.json();
-        setPreview(data.url);
+        if (!noPreview) setPreview(data.url);
         onUploaded(data.url);
       } catch (e) {
         setUploadError(e instanceof Error ? e.message : "Upload failed");
@@ -60,7 +62,7 @@ export default function ImageUpload({ onUploaded, compact, square, label }: Prop
     [upload]
   );
 
-  const size = compact ? "h-[80px] w-[80px]" : square ? "aspect-square w-full" : "h-[200px] w-full";
+  const size = sizeClassName || (compact ? "h-[80px] w-[80px]" : square ? "aspect-square w-full" : "h-[200px] w-full");
 
   if (preview) {
     return (
@@ -77,7 +79,7 @@ export default function ImageUpload({ onUploaded, compact, square, label }: Prop
               setPreview(null);
               if (inputRef.current) inputRef.current.value = "";
             }}
-            className="absolute top-1 right-1 w-5 h-5 bg-white/80 rounded-full flex items-center justify-center text-[10px] text-[#808080] hover:text-text"
+            className="absolute top-1 right-1 w-5 h-5 bg-white/80 rounded-full flex items-center justify-center text-[12px] text-text-muted hover:text-text"
           >
             ✕
           </button>
@@ -95,8 +97,8 @@ export default function ImageUpload({ onUploaded, compact, square, label }: Prop
         </p>
       )}
       <div
-        className={`${size} border-2 border-dashed border-[#c0c0c0] flex items-center justify-center cursor-pointer transition-colors hover:border-text-muted ${
-          dragOver ? "border-text-muted bg-[#f0f0f0]" : ""
+        className={`${size} border-2 border-dashed border-text-light flex items-center justify-center cursor-pointer transition-colors hover:border-text-muted ${
+          dragOver ? "border-text-muted bg-bg-dark" : ""
         } ${compact ? "rounded-full" : ""}`}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => {
@@ -107,11 +109,11 @@ export default function ImageUpload({ onUploaded, compact, square, label }: Prop
         onDrop={handleDrop}
       >
         {uploading ? (
-          <span className="text-[12px] text-[#c0c0c0] animate-pulse">...</span>
+          <span className="text-[12px] text-text-light animate-pulse">...</span>
         ) : uploadError ? (
           <span className="text-[12px] text-red-400 px-2 text-center">{uploadError}</span>
         ) : (
-          <span className="text-[24px] text-[#c0c0c0]">+</span>
+          <span className="text-[24px] text-text-light">+</span>
         )}
       </div>
       <input

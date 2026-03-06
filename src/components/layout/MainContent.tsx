@@ -28,6 +28,8 @@ export default function MainContent({
   const isHome = pathname === "/";
   const isPortfolio = pathname.startsWith("/portfolio");
   const isCabinet = pathname === "/cabinet";
+  const [heroImage, setHeroImage] = useState<string | undefined>();
+  const [heroLabel, setHeroLabel] = useState<{ title: string; year: string; tools: string } | undefined>();
   const [showFullWidth, setShowFullWidth] = useState(isFullWidth);
   const [isOrderLayout, setIsOrderLayout] = useState(isOrder);
   const prevPathnameRef = useRef(pathname);
@@ -66,6 +68,19 @@ export default function MainContent({
     }
   }, [isOrder, pathname]);
 
+  useEffect(() => {
+    fetch("/api/site-settings")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.heroImage) setHeroImage(d.heroImage);
+        if (Array.isArray(d.heroImages)) {
+          const active = d.heroImages.find((img: { url: string }) => img.url === d.heroImage);
+          if (active) setHeroLabel({ title: active.title, year: active.year, tools: active.tools });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Update prev pathname ref LAST so both effects above can read the previous value
   useEffect(() => {
     prevPathnameRef.current = pathname;
@@ -93,12 +108,12 @@ export default function MainContent({
               <PageTransition>{children}</PageTransition>
             </div>
           </main>
-          {!isCabinet && <HeroImage isFadingOut={isFadingOut} />}
+          {!isCabinet && <HeroImage isFadingOut={isFadingOut} heroImage={heroImage} />}
         </div>
       )}
 
       {/* ArtworkLabel — always mounted to avoid language switcher blinking on transitions */}
-      <ArtworkLabel hideInfo={isFullWidth || isCabinet} fadeInfo={isFadingOut} />
+      <ArtworkLabel hideInfo={isFullWidth || isCabinet} fadeInfo={isFadingOut} heroLabel={heroLabel} />
 
       {/* Shared hero name — persists across Home/Order without re-animating */}
       <AnimatePresence>

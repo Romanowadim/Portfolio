@@ -52,14 +52,14 @@ export default function AddArtworkTile({ onClick, index, onDropImage }: Props) {
       onDrop={handleDrop}
       className={`group relative aspect-square overflow-hidden border-2 border-dashed flex items-center justify-center transition-colors ${
         dragOver
-          ? "border-text-muted bg-[#c0c0c0]/10"
-          : "border-[#c0c0c0] hover:border-text-muted"
+          ? "border-text-muted bg-text-light/10"
+          : "border-text-light hover:border-text-muted"
       }`}
     >
       {uploading ? (
-        <span className="text-[24px] font-light text-[#c0c0c0] animate-pulse">...</span>
+        <span className="text-[24px] font-light text-text-light animate-pulse">...</span>
       ) : (
-        <span className={`text-[40px] font-light transition-colors ${dragOver ? "text-text-muted" : "text-[#c0c0c0] group-hover:text-text-muted"}`}>
+        <span className={`text-[40px] font-light transition-colors ${dragOver ? "text-text-muted" : "text-text-light group-hover:text-text-muted"}`}>
           +
         </span>
       )}

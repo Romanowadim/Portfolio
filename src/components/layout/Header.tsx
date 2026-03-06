@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
+import ThemeSwitcher from "@/components/ui/ThemeSwitcher";
 import { useAdmin } from "@/components/admin/AdminProvider";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -113,7 +114,10 @@ export default function Header() {
                 </Link>
               );
             })}
-            <LanguageSwitcher />
+            <div className="flex items-center gap-2">
+              <ThemeSwitcher />
+              <LanguageSwitcher />
+            </div>
           </motion.nav>
         )}
       </AnimatePresence>

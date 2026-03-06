@@ -2,7 +2,7 @@
 
 import { createPortal } from "react-dom";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocale } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
 import { Artwork } from "@/data/artworks";
@@ -65,10 +65,26 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
   };
 
   const isOrder = !!rc.clientName;
+  const clientSocialUrl = rc.clientSocials?.find(s => s.url)?.url;
   const [fullscreen, setFullscreen] = useState(false);
   const [hoveredTool, setHoveredTool] = useState<string | null>(null);
   const [imgRatio, setImgRatio] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"final" | "sketch">("final");
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [hintBottom, setHintBottom] = useState(26);
+
+  const updateHintPos = useCallback(() => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const gap = window.innerHeight - rect.bottom;
+    setHintBottom(gap / 2);
+  }, []);
+
+  useEffect(() => {
+    updateHintPos();
+    window.addEventListener("resize", updateHintPos);
+    return () => window.removeEventListener("resize", updateHintPos);
+  }, [updateHintPos, fullscreen]);
 
   // Reset view mode when navigating to another artwork
   useEffect(() => {
@@ -128,6 +144,9 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
         if (e.key === "ArrowLeft") onPrev?.();
         if (e.key === "ArrowRight") onNext?.();
       }
+      if (e.code === "KeyC") onClose();
+      if (e.code === "KeyF") setFullscreen((v) => !v);
+      if (e.code === "KeyV") setViewMode((v) => v === "final" ? "sketch" : "final");
     };
     document.addEventListener("keydown", handleKey);
     document.body.style.overflow = "hidden";
@@ -135,7 +154,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
       document.removeEventListener("keydown", handleKey);
       document.body.style.overflow = "";
     };
-  }, [onClose, onPrev, onNext, fullscreen]);
+  }, [onClose, onPrev, onNext, fullscreen, viewMode]);
 
   const content = (
     <motion.div
@@ -216,13 +235,15 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
       )}
 
       {/* Modal content */}
-      {artwork.category === "youtube" ? (
+      {(artwork.displayType === "youtube" || (!artwork.displayType && artwork.category === "youtube")) ? (
         /* ─── YouTube layout: vertical card with wide image ─── */
         <div className="absolute inset-0 flex items-center justify-center p-[52px]" onClick={onClose}>
           <motion.div
             initial={{ opacity: instant ? 1 : 0, y: instant ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: instant ? 0 : 0.1 }}
+            ref={cardRef}
+            onAnimationComplete={updateHintPos}
             className="flex flex-col max-w-[1596px] w-full"
             onClick={(e) => e.stopPropagation()}
           >
@@ -230,7 +251,10 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
             {(rc.clientName || artwork.sketch) && (
               <div className="flex items-start bg-white px-[67px] py-[40px] shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]">
                 {rc.clientName && (
-                  <div className="flex items-start gap-[27px]">
+                  <div
+                    className={`flex items-start gap-[27px] flex-1${clientSocialUrl ? ' cursor-pointer hover:bg-[#f5f5f5] transition-colors p-[12px] -mx-[12px] -mt-[12px]' : ''}`}
+                    onClick={clientSocialUrl ? (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('a')) { fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: resolvedContact?.id ?? artwork.contactId }) }); window.open(clientSocialUrl, '_blank'); } } : undefined}
+                  >
                     {rc.clientAvatar && (
                       <div
                         className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
@@ -277,6 +301,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                             href={social.url}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() => fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: resolvedContact?.id ?? artwork.contactId }) })}
                             className="block w-[20px] h-[20px] hover:brightness-[0.667] transition-[filter]"
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -480,10 +505,14 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                         const fresh = coworkerList.find((c) => (cw.id && c.id === cw.id) || c.name === cw.name);
                         const data = fresh ?? cw;
                         const socials = (fresh?.socials ?? cw.socials ?? []).filter((s) => s.url);
+                        const cwUrl = socials[0]?.url;
                         return (
                         <div key={i}>
                           {i > 0 && <div className="h-px bg-[#f0f0f0] my-[12px]" />}
-                          <div className="flex items-center gap-[12px]">
+                          <div
+                            className={`flex items-center gap-[12px]${cwUrl ? ' cursor-pointer hover:bg-[#f5f5f5] transition-colors p-[12px] -m-[12px]' : ''}`}
+                            onClick={cwUrl ? (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('a')) { fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: cw.id ?? cw.name }) }); window.open(cwUrl, '_blank'); } } : undefined}
+                          >
                           <div className="relative w-[36px] h-[36px] rounded-full overflow-hidden shrink-0 bg-[#f0f0f0] flex items-center justify-center">
                             {data.avatar ? (
                               // eslint-disable-next-line @next/next/no-img-element
@@ -499,7 +528,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                               {data.name}
                             </p>
                             {data.role && (
-                              <p className="text-[11px] font-medium tracking-[1.5px] text-[#c0c0c0] leading-[14px]">
+                              <p className="text-[12px] font-medium tracking-[1.5px] text-[#c0c0c0] leading-[14px]">
                                 {data.role}
                               </p>
                             )}
@@ -512,6 +541,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                                   href={s.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  onClick={() => fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: cw.id ?? cw.name }) })}
                                   className="block w-[16px] h-[16px] hover:brightness-[0.667] transition-[filter]"
                                 >
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -538,6 +568,8 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
             initial={{ opacity: instant ? 1 : 0, y: instant ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: instant ? 0 : 0.1 }}
+            ref={cardRef}
+            onAnimationComplete={updateHintPos}
             className="flex max-h-[calc(50vh+360px)] h-full shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]"
             onClick={(e) => e.stopPropagation()}
           >
@@ -581,7 +613,10 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
               <div>
                 {/* Client info block (orders only) */}
                 {isOrder && (
-                  <div className="flex items-start gap-[16px] mb-[40px]">
+                  <div
+                    className={`flex items-start gap-[16px] mb-[40px]${clientSocialUrl ? ' cursor-pointer hover:bg-[#f5f5f5] transition-colors p-[12px] -mx-[12px] -mt-[12px]' : ''}`}
+                    onClick={clientSocialUrl ? (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('a')) { fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: resolvedContact?.id ?? artwork.contactId }) }); window.open(clientSocialUrl, '_blank'); } } : undefined}
+                  >
                     {rc.clientAvatar && (
                       <div
                         className="relative w-[80px] h-[80px] rounded-full overflow-hidden shrink-0"
@@ -623,6 +658,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                             href={social.url}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={() => fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: resolvedContact?.id ?? artwork.contactId }) })}
                             className="block w-[20px] h-[20px] hover:brightness-[0.667] transition-[filter]"
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -706,10 +742,14 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                         const fresh = coworkerList.find((c) => (cw.id && c.id === cw.id) || c.name === cw.name);
                         const data = fresh ?? cw;
                         const socials = (fresh?.socials ?? cw.socials ?? []).filter((s) => s.url);
+                        const cwUrl = socials[0]?.url;
                         return (
                         <div key={i}>
                           {i > 0 && <div className="h-px bg-[#f0f0f0] my-[12px]" />}
-                          <div className="flex items-center gap-[12px]">
+                          <div
+                            className={`flex items-center gap-[12px]${cwUrl ? ' cursor-pointer hover:bg-[#f5f5f5] transition-colors p-[12px] -m-[12px]' : ''}`}
+                            onClick={cwUrl ? (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('a')) { fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: cw.id ?? cw.name }) }); window.open(cwUrl, '_blank'); } } : undefined}
+                          >
                           <div className="relative w-[36px] h-[36px] rounded-full overflow-hidden shrink-0 bg-[#f0f0f0] flex items-center justify-center">
                             {data.avatar ? (
                               // eslint-disable-next-line @next/next/no-img-element
@@ -725,7 +765,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                               {data.name}
                             </p>
                             {data.role && (
-                              <p className="text-[11px] font-medium tracking-[1.5px] text-[#c0c0c0] leading-[14px]">
+                              <p className="text-[12px] font-medium tracking-[1.5px] text-[#c0c0c0] leading-[14px]">
                                 {data.role}
                               </p>
                             )}
@@ -738,6 +778,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
                                   href={s.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  onClick={() => fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: cw.id ?? cw.name }) })}
                                   className="block w-[16px] h-[16px] hover:brightness-[0.667] transition-[filter]"
                                 >
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -863,6 +904,16 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Keyboard controls hint */}
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-[16px] text-[11px] tracking-[1px] text-[#b0b0b0] select-none pointer-events-none transition-[bottom] duration-300" style={{ bottom: hintBottom }}>
+        <span className="uppercase font-bold">Controls:</span>
+        <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">←</kbd> Move Left</span>
+        <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">→</kbd> Move Right</span>
+        <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">F</kbd> Full Screen</span>
+        {artwork.sketch && <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">V</kbd> Change Version</span>}
+        <span className="flex items-center gap-[8px]"><kbd className="w-[20px] h-[20px] flex items-center justify-center border border-[#d0d0d0] rounded text-[10px]">C</kbd> Close</span>
+      </div>
     </motion.div>
   );
 

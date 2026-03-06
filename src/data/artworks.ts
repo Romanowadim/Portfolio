@@ -11,6 +11,7 @@ export type Artwork = {
   hours?: string;
   category: string;
   subcategory?: string;
+  displayType?: "youtube" | "default";
   objectPosition?: string;
   client?: string;
   clientName?: string;

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyToken } from "@/lib/admin";
-import { readStats } from "@/lib/stats";
-import { readDynamicArtworks, readContacts } from "@/lib/blob";
+import { readContactClicks } from "@/lib/contact-clicks";
+import { readContacts, readCoworkers } from "@/lib/blob";
 
 async function requireAuth() {
   const cookieStore = await cookies();
@@ -27,41 +27,25 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const period = searchParams.get("period") ?? "week";
+  const type = searchParams.get("type") ?? "contacts";
 
-  const [stats, artworks, contacts] = await Promise.all([
-    readStats(),
-    readDynamicArtworks(),
+  const [clicks, contacts, coworkers] = await Promise.all([
+    readContactClicks(),
     readContacts(),
+    readCoworkers(),
   ]);
 
   const now = new Date();
 
-  // Build contactId → artworkIds map
-  const contactArtworks = new Map<string, string[]>();
-  for (const a of artworks) {
-    if (!a.contactId) continue;
-    const list = contactArtworks.get(a.contactId) || [];
-    list.push(a.id);
-    contactArtworks.set(a.contactId, list);
-  }
+  const entities = type === "coworkers"
+    ? coworkers.map((cw) => ({ id: cw.id, name: cw.name }))
+    : contacts.map((c) => ({ id: c.id, name: c.clientName }));
 
-  // For each contact with artworks, collect timestamps and bucket them
-  const result = contacts
-    .filter((c) => contactArtworks.has(c.id))
-    .map((contact) => {
-      const artworkIds = contactArtworks.get(contact.id)!;
-
-      // Collect all view timestamps for this contact's artworks
-      const timestamps: string[] = [];
-      for (const aid of artworkIds) {
-        const entries = stats[aid];
-        if (!entries) continue;
-        for (const v of entries) {
-          if (typeof v !== "string" && v.at) timestamps.push(v.at);
-        }
-      }
-
-      const totalViews = timestamps.length;
+  const result = entities
+    .map((entity) => {
+      const entries = clicks[entity.id] ?? [];
+      const timestamps = entries.map((e) => e.at);
+      const totalClicks = timestamps.length;
       const buckets: Bucket[] = [];
 
       if (period === "day") {
@@ -100,14 +84,10 @@ export async function GET(req: Request) {
         }
       }
 
-      return {
-        id: contact.id,
-        name: contact.clientName,
-        totalViews,
-        buckets,
-      };
+      return { id: entity.id, name: entity.name, total: totalClicks, buckets };
     })
-    .sort((a, b) => b.totalViews - a.totalViews);
+    .filter((e) => e.total > 0)
+    .sort((a, b) => b.total - a.total);
 
-  return NextResponse.json({ contacts: result });
+  return NextResponse.json({ entities: result });
 }
