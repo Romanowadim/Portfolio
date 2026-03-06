@@ -21,6 +21,35 @@ const toolInfo: Record<string, { fullName: string; since: number; file?: string;
   claude:      { fullName: "Claude",            since: 2026, file: "claude-ai", invert: true },
 };
 
+function getVideoEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    // YouTube
+    if (u.hostname.includes("youtube.com") || u.hostname.includes("youtu.be")) {
+      let videoId = u.searchParams.get("v");
+      if (!videoId && u.hostname.includes("youtu.be")) videoId = u.pathname.slice(1);
+      if (!videoId) { const m = u.pathname.match(/\/(?:embed|v|shorts)\/([^/?]+)/); videoId = m?.[1] ?? null; }
+      if (videoId) return `https://www.youtube.com/embed/${videoId}`;
+    }
+    // VK Video
+    if (u.hostname.includes("vk.com") || u.hostname.includes("vkvideo.ru")) {
+      const m = u.pathname.match(/video(-?\d+_\d+)/);
+      if (m) { const [oid, id] = m[1].split("_"); return `https://vk.com/video_ext.php?oid=${oid}&id=${id}`; }
+    }
+    // RuTube
+    if (u.hostname.includes("rutube.ru")) {
+      const m = u.pathname.match(/\/video\/([a-f0-9]+)/);
+      if (m) return `https://rutube.ru/play/embed/${m[1]}`;
+    }
+    // Vevo — typically hosted on YouTube, try as YouTube
+    if (u.hostname.includes("vevo.com")) {
+      return url; // Vevo doesn't have a standard embed, fallback to link
+    }
+  } catch { /* invalid URL */ }
+  return null;
+}
+
 function getExperience(since: number): string {
   const years = new Date().getFullYear() - since;
   if (years === 0) return "Less than 1 year";
@@ -235,7 +264,69 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
       )}
 
       {/* Modal content */}
-      {(artwork.displayType === "youtube" || (!artwork.displayType && artwork.category === "youtube")) ? (
+      {artwork.displayType === "video" ? (
+        /* ─── Video layout: same as YouTube but with embedded video ─── */
+        <div className="absolute inset-0 flex items-center justify-center p-[52px]" onClick={onClose}>
+          <motion.div
+            initial={{ opacity: instant ? 1 : 0, y: instant ? 0 : 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: instant ? 0 : 0.1 }}
+            ref={cardRef}
+            onAnimationComplete={updateHintPos}
+            className="flex flex-col max-w-[1596px] w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* White card */}
+            <div className="bg-white shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]">
+              {/* Embedded video */}
+              {(() => {
+                const embedUrl = getVideoEmbedUrl(artwork.videoUrl || "");
+                return embedUrl ? (
+                  <div className="relative w-full" style={{ aspectRatio: "16/9" }}>
+                    <iframe
+                      src={embedUrl}
+                      className="absolute inset-0 w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      frameBorder="0"
+                    />
+                  </div>
+                ) : (
+                  <div className="relative w-full overflow-hidden" style={{ aspectRatio: imgRatio ?? 6 }}>
+                    <Image src={displayImage} alt={artwork.title[locale]} fill className="object-cover" sizes="90vw" priority />
+                  </div>
+                );
+              })()}
+
+              {/* Info section below video — two columns */}
+              <div className="flex gap-[160px] px-[67px] pt-[57px] pb-[52px]">
+                <div className="flex flex-col gap-[14px] flex-1">
+                  <h2 className="text-[14px] font-bold tracking-[2.8px] text-[#808080] uppercase leading-[20px]">
+                    {artwork.title[locale]}
+                  </h2>
+                  {rc.clientName && (
+                    <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] leading-[15px] uppercase">
+                      {rc.clientName}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-[14px] shrink-0">
+                  {artwork.year && (
+                    <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] uppercase leading-[15px]">
+                      {artwork.year}
+                    </p>
+                  )}
+                  {artwork.tools && (
+                    <p className="text-[12px] font-medium tracking-[2.4px] text-[#c0c0c0] uppercase leading-[15px]">
+                      {artwork.tools}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      ) : (artwork.displayType === "youtube" || (!artwork.displayType && artwork.category === "youtube")) ? (
         /* ─── YouTube layout: vertical card with wide image ─── */
         <div className="absolute inset-0 flex items-center justify-center p-[52px]" onClick={onClose}>
           <motion.div

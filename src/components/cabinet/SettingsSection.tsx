@@ -190,83 +190,6 @@ export default function SettingsSection({
         style={PANEL_STYLE}
       >
         <div>
-          {/* Social links section */}
-          <div className="mb-0">
-            <p className="text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary mb-1">
-              Social links
-            </p>
-            <p className="text-[12px] text-text-light mb-4">
-              Sidebar social buttons
-            </p>
-
-            <div>
-            <DndContext
-              sensors={socialSensors}
-              collisionDetection={closestCenter}
-              onDragEnd={(event: DragEndEvent) => {
-                const { active, over } = event;
-                if (over && active.id !== over.id) {
-                  const oldIdx = siteSocials.findIndex((_, i) => `social-${i}` === active.id);
-                  const newIdx = siteSocials.findIndex((_, i) => `social-${i}` === over.id);
-                  if (oldIdx !== -1 && newIdx !== -1) setSiteSocials(arrayMove(siteSocials, oldIdx, newIdx));
-                }
-              }}
-            >
-            <SortableContext items={siteSocials.map((_, i) => `social-${i}`)} strategy={verticalListSortingStrategy}>
-            <div className="flex flex-col gap-2 max-w-[520px]">
-              {siteSocials.map((s, i) => (
-                <SortableSocialRow
-                  key={`social-${i}`}
-                  id={`social-${i}`}
-                  social={s}
-                  index={i}
-                  onUpdate={(idx, updated) => {
-                    const next = [...siteSocials];
-                    next[idx] = updated;
-                    setSiteSocials(next);
-                  }}
-                  onRemove={(idx) => setSiteSocials(siteSocials.filter((_, j) => j !== idx))}
-                />
-              ))}
-            </div>
-            </SortableContext>
-            </DndContext>
-            <div className="flex gap-2 mt-3 max-w-[520px]">
-              <button
-                type="button"
-                onClick={() => setSiteSocials([...siteSocials, { name: "", url: "", icon: "/images/social/vk.svg" }])}
-                className="text-[12px] text-text-light hover:text-text-muted"
-              >
-                + Add link
-              </button>
-              <button
-                type="button"
-                disabled={socialsSaving}
-                onClick={async () => {
-                  setSocialsSaving(true);
-                  try {
-                    const res = await fetch("/api/site-settings", {
-                      method: "PUT",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ socials: siteSocials.filter((s) => s.name && s.url) }),
-                    });
-                    if (res.ok) {
-                      const data = await res.json();
-                      setSiteSocials(data.socials);
-                    }
-                  } catch {}
-                  setSocialsSaving(false);
-                }}
-                className="text-[12px] font-bold tracking-[1.8px] uppercase text-text-muted hover:text-text transition-colors disabled:opacity-30 ml-auto"
-              >
-                {socialsSaving ? "..." : "Save"}
-              </button>
-            </div>
-            </div>
-          </div>
-
-          <hr className="my-10 border-text-light/30" />
-
           <p className="text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary mb-1">
             Hero illustration
           </p>
@@ -420,6 +343,81 @@ export default function SettingsSection({
                 />
               </div>
             </HorizontalCarousel>
+          </div>
+
+          <hr className="my-10 border-text-light/30" />
+
+          {/* Social links section */}
+          <div>
+            <p className="text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary mb-1">
+              Social links
+            </p>
+            <p className="text-[12px] text-text-light mb-4">
+              Sidebar social buttons
+            </p>
+
+            <DndContext
+              sensors={socialSensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(event: DragEndEvent) => {
+                const { active, over } = event;
+                if (over && active.id !== over.id) {
+                  const oldIdx = siteSocials.findIndex((_, i) => `social-${i}` === active.id);
+                  const newIdx = siteSocials.findIndex((_, i) => `social-${i}` === over.id);
+                  if (oldIdx !== -1 && newIdx !== -1) setSiteSocials(arrayMove(siteSocials, oldIdx, newIdx));
+                }
+              }}
+            >
+            <SortableContext items={siteSocials.map((_, i) => `social-${i}`)} strategy={verticalListSortingStrategy}>
+            <div className="flex flex-col gap-2 max-w-[520px]">
+              {siteSocials.map((s, i) => (
+                <SortableSocialRow
+                  key={`social-${i}`}
+                  id={`social-${i}`}
+                  social={s}
+                  index={i}
+                  onUpdate={(idx, updated) => {
+                    const next = [...siteSocials];
+                    next[idx] = updated;
+                    setSiteSocials(next);
+                  }}
+                  onRemove={(idx) => setSiteSocials(siteSocials.filter((_, j) => j !== idx))}
+                />
+              ))}
+            </div>
+            </SortableContext>
+            </DndContext>
+            <div className="flex gap-2 mt-3 max-w-[520px]">
+              <button
+                type="button"
+                onClick={() => setSiteSocials([...siteSocials, { name: "", url: "", icon: "/images/social/vk.svg" }])}
+                className="text-[12px] text-text-light hover:text-text-muted"
+              >
+                + Add link
+              </button>
+              <button
+                type="button"
+                disabled={socialsSaving}
+                onClick={async () => {
+                  setSocialsSaving(true);
+                  try {
+                    const res = await fetch("/api/site-settings", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ socials: siteSocials.filter((s) => s.name && s.url) }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setSiteSocials(data.socials);
+                    }
+                  } catch {}
+                  setSocialsSaving(false);
+                }}
+                className="text-[12px] font-bold tracking-[1.8px] uppercase text-text-muted hover:text-text transition-colors disabled:opacity-30 ml-auto"
+              >
+                {socialsSaving ? "..." : "Save"}
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>

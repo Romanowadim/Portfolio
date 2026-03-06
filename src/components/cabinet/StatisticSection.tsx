@@ -12,6 +12,7 @@ export default function StatisticSection() {
   const t = useTranslations("admin");
   const [summary, setSummary] = useState<{ todayVisitors: number; todayArtworkViews: number; allTimeArtworkViews: number; orderClicks: number } | null>(null);
   const [referrers, setReferrers] = useState<{ host: string; count: number }[]>([]);
+  const [onlinePages, setOnlinePages] = useState<{ page: string; count: number }[]>([]);
 
   useEffect(() => {
     fetch("/api/stats/summary")
@@ -22,6 +23,18 @@ export default function StatisticSection() {
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setReferrers(data); })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const fetchOnline = () => {
+      fetch("/api/stats/online-pages")
+        .then((r) => r.json())
+        .then((data) => { if (Array.isArray(data)) setOnlinePages(data); })
+        .catch(() => {});
+    };
+    fetchOnline();
+    const interval = setInterval(fetchOnline, 15_000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -83,20 +96,24 @@ export default function StatisticSection() {
         </div>
       </div>
 
-      {/* Referrer sites */}
-      {referrers.length > 0 && (
-        <div>
+      {/* Referrer sites + Online by page */}
+      <div className="flex gap-[12px]">
+        <div className="flex-1 min-w-0">
           <p className="text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary mb-3">
             Referrer sites
           </p>
-          <div className="border border-border max-h-[calc(7*33px+16px)] overflow-y-auto">
-            {(() => {
+          <div className="border border-border overflow-y-auto" style={{ height: `${6 * 33}px` }}>
+            {referrers.length === 0 ? (
+              <div className="py-[6px] px-4">
+                <span className="text-[12px] text-text-light">—</span>
+              </div>
+            ) : (() => {
               const rows: { host: string; count: number }[][] = [];
               for (let i = 0; i < referrers.length; i += 3) {
                 rows.push(referrers.slice(i, i + 3));
               }
               return rows.map((row, ri) => (
-                <div key={ri} className={`grid shrink-0 ${ri % 2 === 1 ? "bg-text-muted/[0.06]" : ""} hover:bg-text-muted/[0.10] transition-colors`} style={{ gridTemplateColumns: "1fr auto 1fr auto 1fr" }}>
+                <div key={ri} className={`grid shrink-0 ${ri > 0 ? "border-t border-border" : ""} ${ri % 2 === 1 ? "bg-text-muted/[0.06]" : ""} hover:bg-text-muted/[0.10] transition-colors`} style={{ gridTemplateColumns: "1fr auto 1fr auto 1fr" }}>
                   {row.map((r, ci) => {
                     const idx = ri * 3 + ci;
                     return (
@@ -116,7 +133,7 @@ export default function StatisticSection() {
                   {row.length < 3 && Array.from({ length: 3 - row.length }).map((_, ci) => (
                     <React.Fragment key={`empty-${ci}`}>
                       <div className="w-px bg-border" />
-                      <div />
+                      <div className="py-[6px] px-4">&nbsp;</div>
                     </React.Fragment>
                   ))}
                 </div>
@@ -124,7 +141,41 @@ export default function StatisticSection() {
             })()}
           </div>
         </div>
-      )}
+        <div className="shrink-0" style={{ width: "calc(25% - 9px)" }}>
+          <p className="text-[12px] font-bold tracking-[2.8px] uppercase text-text-secondary mb-3">
+            Online by page
+          </p>
+          <div className="border border-border overflow-y-auto">
+            {[
+              { path: "/", label: "Home" },
+              { path: "/about", label: "About" },
+              { path: "/portfolio", label: "Portfolio" },
+              { path: "/equipment", label: "Equipment" },
+              { path: "/order", label: "Order" },
+              { path: "/cabinet", label: "Cabinet" },
+            ].map((page, i) => {
+              const online = onlinePages.find((p) => p.page === page.path || p.page.endsWith(page.path));
+              const count = online?.count ?? 0;
+              return (
+                <div key={page.path} className={`flex items-center justify-between py-[6px] px-4 ${i > 0 ? "border-t border-border" : ""} ${i % 2 === 1 ? "bg-text-muted/[0.06]" : ""} hover:bg-text-muted/[0.10] transition-colors`}>
+                  <span className={`text-[13px] font-bold ${count > 0 ? "text-text-muted" : "text-text-light"}`}>{page.label}</span>
+                  <div className="flex items-center gap-[6px] shrink-0">
+                    {count > 0 && (
+                      <>
+                        <span className="text-[13px] font-bold text-text-muted">{count}</span>
+                        <span className="relative flex h-[8px] w-[8px]">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-[8px] w-[8px] bg-red-500" />
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 }

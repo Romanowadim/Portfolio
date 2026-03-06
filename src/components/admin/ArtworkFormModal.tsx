@@ -136,8 +136,9 @@ export default function ArtworkFormModal({
   const [clientRole, setClientRole] = useState(editArtwork?.clientRole || "");
   const [clientAvatar, setClientAvatar] = useState(editArtwork?.clientAvatar || "");
   const [socials, setSocials] = useState<{ icon: string; url: string }[]>(editArtwork?.clientSocials || []);
-  const [displayType, setDisplayType] = useState<"youtube" | "default">(editArtwork?.displayType || (editArtwork?.category === "youtube" ? "youtube" : "default"));
+  const [displayType, setDisplayType] = useState<"youtube" | "video" | "default">(editArtwork?.displayType || (editArtwork?.category === "youtube" ? "youtube" : "default"));
   const isYoutubeType = displayType === "youtube";
+  const [videoUrl, setVideoUrl] = useState(editArtwork?.videoUrl || "");
   const [subscribers, setSubscribers] = useState(editArtwork?.subscribers || "");
   const [subsFetching, setSubsFetching] = useState(false);
   const subsFetchingRef = useRef(false);
@@ -358,7 +359,8 @@ export default function ArtworkFormModal({
       tools: tools || undefined,
       category: cat,
       subcategory: subcat || undefined,
-      displayType: displayType === "youtube" ? "youtube" : undefined,
+      displayType: displayType !== "default" ? displayType : undefined,
+      videoUrl: displayType === "video" ? (videoUrl || undefined) : undefined,
       // Contact by reference vs manual fields
       contactId: linkedContactId || undefined,
       client: linkedContactId ? undefined : (client || undefined),
@@ -645,12 +647,30 @@ export default function ArtworkFormModal({
                   </button>
                   <button
                     type="button"
+                    onClick={() => setDisplayType("video")}
+                    className={`h-[30px] px-4 text-[12px] font-bold tracking-[1.8px] uppercase border transition-colors ${displayType === "video" ? "border-text-muted text-text-muted" : "border-text-light text-text-light hover:border-text-muted hover:text-text-muted"}`}
+                  >
+                    Video
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setDisplayType("youtube")}
                     className={`h-[30px] px-4 text-[12px] font-bold tracking-[1.8px] uppercase border transition-colors ${displayType === "youtube" ? "border-text-muted text-text-muted" : "border-text-light text-text-light hover:border-text-muted hover:text-text-muted"}`}
                   >
                     YouTube
                   </button>
                 </div>
+                {displayType === "video" && (
+                  <div className="mt-3">
+                    <label className={labelClass}>Video URL</label>
+                    <input
+                      className="w-full h-[30px] border border-text-light pl-3 pr-3 text-sm outline-none focus:border-text transition-colors"
+                      value={videoUrl}
+                      onChange={(e) => setVideoUrl(e.target.value)}
+                      placeholder="YouTube, VK, RuTube, or Vevo URL"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

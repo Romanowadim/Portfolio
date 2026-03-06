@@ -64,10 +64,18 @@ export default function WorldMap({ className }: Props) {
       .then((r) => r.json())
       .then((data) => { if (data && typeof data === "object" && !data.error) setDayData(data); })
       .catch(() => {});
-    fetch("/api/stats/online")
-      .then((r) => r.json())
-      .then((data) => { if (typeof data?.count === "number") setOnline(data.count); })
-      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const fetchOnline = () => {
+      fetch("/api/stats/online")
+        .then((r) => r.json())
+        .then((data) => { if (typeof data?.count === "number") setOnline(data.count); })
+        .catch(() => {});
+    };
+    fetchOnline();
+    const interval = setInterval(fetchOnline, 15_000);
+    return () => clearInterval(interval);
   }, []);
 
 
