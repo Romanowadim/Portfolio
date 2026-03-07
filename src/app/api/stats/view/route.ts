@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { recordView } from "@/lib/stats";
+import { addNotification } from "@/lib/notifications";
+import { readDynamicArtworks } from "@/lib/blob";
+import { artworks as staticArtworks } from "@/data/artworks";
 
 export async function POST(req: Request) {
   const { artworkId } = await req.json();
@@ -24,5 +27,17 @@ export async function POST(req: Request) {
   }
 
   await recordView(artworkId, visitorId);
+
+  // Send view notification
+  const dynamicArtworks = await readDynamicArtworks();
+  const artwork = [...dynamicArtworks, ...staticArtworks].find((a) => a.id === artworkId);
+  if (artwork) {
+    addNotification({
+      type: "view",
+      message: artwork.title.en || artwork.title.ru,
+      data: { artworkId, thumbnail: artwork.thumbnail || artwork.image },
+    }).catch(() => {});
+  }
+
   return res;
 }

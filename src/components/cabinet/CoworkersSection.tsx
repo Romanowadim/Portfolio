@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Coworker } from "@/lib/blob";
@@ -195,6 +195,17 @@ export default function CoworkersSection({
   onViewArtwork,
 }: Props) {
   const t = useTranslations("admin");
+  const [resetKey, setResetKey] = useState(0);
+
+  const handleReset = useCallback(async (target: string) => {
+    if (!confirm(`Reset ${target} data?`)) return;
+    await fetch("/api/stats/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target }),
+    });
+    setResetKey((k) => k + 1);
+  }, []);
 
   return (
     <motion.div
@@ -207,7 +218,7 @@ export default function CoworkersSection({
       style={PANEL_STYLE}
     >
       <div className="flex flex-col gap-[4px]">
-        <EntityChart chartId="cc-coworkers" apiUrl="/api/stats/clicks-by-entity?type=coworkers" title="CLICKS BY COWORKERS" sidebarTitle="TOP COWORKERS" icon={CLICK_ICON_22} sidebarIcon={<ClickIcon />} />
+        <EntityChart chartId="cc-coworkers" apiUrl="/api/stats/clicks-by-entity?type=coworkers" title="CLICKS BY COWORKERS" sidebarTitle="TOP COWORKERS" resetKey={resetKey} onReset={() => handleReset("contact-clicks")} icon={CLICK_ICON_22} sidebarIcon={<ClickIcon />} />
 
         <button
           onClick={onCreateCoworker}

@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useState, useCallback } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence } from "framer-motion";
@@ -346,6 +347,17 @@ export default function CategoriesSection({
   onReorderSubs,
 }: Props) {
   const t = useTranslations("admin");
+  const [resetKey, setResetKey] = useState(0);
+
+  const handleReset = useCallback(async (target: string) => {
+    if (!confirm(`Reset ${target} data?`)) return;
+    await fetch("/api/stats/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target }),
+    });
+    setResetKey((k) => k + 1);
+  }, []);
 
   return (
     <motion.div
@@ -357,7 +369,7 @@ export default function CategoriesSection({
       className="fixed top-0 bottom-0 right-0 left-[calc(33.75vw+24px)] z-10 overflow-y-auto bg-bg"
       style={{ paddingTop: 148 + 24, paddingBottom: 24, paddingRight: 24 }}
     >
-      <EntityChart chartId="cv-categories" apiUrl={`/api/stats/views-by-category?locale=${locale}`} title="VIEWS BY SECTIONS" sidebarTitle="TOP SECTIONS" icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path fillRule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z" clipRule="evenodd" /></svg>} sidebarIcon={<EyeIcon />} />
+      <EntityChart chartId="cv-categories" apiUrl={`/api/stats/views-by-category?locale=${locale}`} title="VIEWS BY SECTIONS" sidebarTitle="TOP SECTIONS" resetKey={resetKey} onReset={() => handleReset("category-views")} icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path fillRule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z" clipRule="evenodd" /></svg>} sidebarIcon={<EyeIcon />} />
 
       {/* Table header — same flex/gap/px as SortableCategoryRow */}
       <div className="flex items-center gap-[12px] px-[16px] mb-[8px] border border-border">

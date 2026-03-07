@@ -649,7 +649,7 @@ export default function ArtworkModal({ artwork, onClose, onEdit, onPrev, onNext,
               <div className="flex items-start bg-white px-[67px] py-[40px] shadow-[0px_4px_40px_0px_rgba(0,0,0,0.12)]">
                 {rc.clientName && (
                   <div
-                    className={`flex items-start gap-[27px] flex-1${clientSocialUrl ? ' cursor-pointer hover:bg-[#f5f5f5] transition-colors p-[12px] -mx-[12px] -mt-[12px]' : ''}`}
+                    className={`flex items-start gap-[27px]${clientSocialUrl ? ' cursor-pointer hover:bg-[#f5f5f5] transition-colors p-[12px] -mx-[12px] -mt-[12px]' : ''}`}
                     onClick={clientSocialUrl ? (e: React.MouseEvent) => { if (!(e.target as HTMLElement).closest('a')) { fetch("/api/stats/contact-click", { method: "POST", body: JSON.stringify({ id: resolvedContact?.id ?? artwork.contactId }) }); window.open(clientSocialUrl, '_blank'); } } : undefined}
                   >
                     {rc.clientAvatar && (

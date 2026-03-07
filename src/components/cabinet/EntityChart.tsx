@@ -15,7 +15,7 @@ const CV_COLORS = ["#81AB41", "#E8913A", "#5B8DEF", "#E85B8D", "#8B5CF6", "#14B8
 export { CV_COLORS, CV_CHART_H, CV_LABEL_H, CV_Y_LABEL_W, CV_PERIODS };
 export type { CVPeriod, CVBucket };
 
-export default function EntityChart({ chartId, apiUrl, title, sidebarTitle, icon, sidebarIcon, sidebarWidth, stretch }: {
+export default function EntityChart({ chartId, apiUrl, title, sidebarTitle, icon, sidebarIcon, sidebarWidth, stretch, resetKey, onReset }: {
   chartId: string;
   apiUrl: string;
   title: string;
@@ -24,6 +24,8 @@ export default function EntityChart({ chartId, apiUrl, title, sidebarTitle, icon
   sidebarIcon?: React.ReactNode;
   sidebarWidth?: string;
   stretch?: boolean;
+  resetKey?: number;
+  onReset?: () => void;
 }) {
   const t = useTranslations("admin");
   const [mounted, setMounted] = useState(false);
@@ -63,7 +65,7 @@ export default function EntityChart({ chartId, apiUrl, title, sidebarTitle, icon
       .then((r) => r.json())
       .then((d: { entities: ECEntity[] }) => { setData(d.entities); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [period, apiUrl]);
+  }, [period, apiUrl, resetKey]);
 
   const selected = selectedId ? data.find((c) => c.id === selectedId) : null;
   const chartData = selected ? [selected] : data.slice(0, 3);
@@ -115,6 +117,14 @@ export default function EntityChart({ chartId, apiUrl, title, sidebarTitle, icon
                   <button onClick={() => setPeriod(p)} className={`text-[12px] font-bold tracking-[1.8px] uppercase transition-colors ${period === p ? "text-text-muted" : "text-text-light hover:text-text-muted"}`}>{t(`period.${p}`)}</button>
                 </React.Fragment>
               ))}
+              {onReset && (
+                <>
+                  <span className="w-px h-[1em] bg-text-light/40 self-center" />
+                  <button onClick={onReset} className="text-text-light hover:text-red-500 transition-colors" title="Reset">
+                    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 3.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" /></svg>
+                  </button>
+                </>
+              )}
             </div>
           </div>
           {loading ? (

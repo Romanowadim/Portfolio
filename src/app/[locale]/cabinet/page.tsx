@@ -28,10 +28,11 @@ import ContactsSection from "@/components/cabinet/ContactsSection";
 import CoworkersSection from "@/components/cabinet/CoworkersSection";
 import CategoriesSection from "@/components/cabinet/CategoriesSection";
 import SettingsSection from "@/components/cabinet/SettingsSection";
+import NotificationsSection from "@/components/cabinet/NotificationsSection";
 
 const staticIds = new Set(staticArtworks.map((a) => a.id));
 
-const sections = [{ key: "statistic" }, { key: "cards" }, { key: "categories" }, { key: "contacts" }, { key: "coworkers" }, { key: "settings" }] as const;
+const sections = [{ key: "statistic" }, { key: "cards" }, { key: "categories" }, { key: "contacts" }, { key: "coworkers" }, { key: "notifications" }, { key: "settings" }] as const;
 
 export default function CabinetPage() {
   const { isAdmin } = useAdmin();
@@ -376,6 +377,12 @@ export default function CabinetPage() {
               }).catch(() => {});
             }}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeSection === "notifications" && (
+          <NotificationsSection />
         )}
       </AnimatePresence>
 

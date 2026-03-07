@@ -3,6 +3,7 @@ import { incrementVisit } from "@/lib/visits";
 import { logReferrer } from "@/lib/referrers";
 import { logGeoVisit } from "@/lib/geo-visits";
 import { markOnline } from "@/lib/online";
+import { addNotification } from "@/lib/notifications";
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +17,16 @@ export async function POST(req: NextRequest) {
     const country = req.headers.get("x-vercel-ip-country") || "";
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
     markOnline(ip, page, country);
-    await Promise.all([incrementVisit(), logReferrer(referrer), logGeoVisit(country)]);
+    await Promise.all([
+      incrementVisit(),
+      logReferrer(referrer),
+      logGeoVisit(country),
+      addNotification({
+        type: "visit",
+        message: `New visitor${country ? ` from ${country}` : ""}${referrer ? ` via ${new URL(referrer).hostname}` : ""}`,
+        data: { country, referrer, page },
+      }),
+    ]);
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ ok: false }, { status: 500 });

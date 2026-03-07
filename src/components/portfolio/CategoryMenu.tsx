@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import { useLocale } from "next-intl";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -270,19 +270,35 @@ export default function CategoryMenu() {
     return () => window.removeEventListener("popstate", onPopState);
   }, [categories, applyNav]);
 
+  const replaceStateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const viewDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleSelectArtwork = (artwork: Artwork | null) => {
     setSelectedArtwork(artwork);
+
+    // Debounce replaceState to avoid SecurityError on rapid navigation
+    if (replaceStateTimer.current) clearTimeout(replaceStateTimer.current);
+    replaceStateTimer.current = setTimeout(() => {
+      if (artwork) {
+        const search = buildSearch(activeGrid?.category ?? null, activeGrid?.subcategory, artwork.id);
+        window.history.replaceState(null, "", window.location.pathname + search);
+      } else {
+        const search = buildSearch(activeGrid?.category ?? null, activeGrid?.subcategory);
+        window.history.replaceState(null, "", window.location.pathname + search);
+      }
+    }, 120);
+
     if (artwork) {
-      const search = buildSearch(activeGrid?.category ?? null, activeGrid?.subcategory, artwork.id);
-      window.history.replaceState(null, "", window.location.pathname + search);
-      fetch("/api/stats/view", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ artworkId: artwork.id }),
-      }).catch(() => {});
+      // Debounce view tracking so rapid flipping doesn't fire many requests
+      if (viewDebounceTimer.current) clearTimeout(viewDebounceTimer.current);
+      viewDebounceTimer.current = setTimeout(() => {
+        fetch("/api/stats/view", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ artworkId: artwork.id }),
+        }).catch(() => {});
+      }, 300);
     } else {
-      const search = buildSearch(activeGrid?.category ?? null, activeGrid?.subcategory);
-      window.history.replaceState(null, "", window.location.pathname + search);
       document.documentElement.removeAttribute("data-artwork-open");
     }
   };

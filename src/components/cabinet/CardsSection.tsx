@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
 import { Artwork } from "@/data/artworks";
@@ -48,6 +48,18 @@ export default function CardsSection({
   const [converting, setConverting] = useState(false);
   const [convertResult, setConvertResult] = useState<{ converted: number; savedMB: number } | null>(null);
   const [storageStats, setStorageStats] = useState<{ totalFiles: number; totalMB: number; byType: Record<string, { count: number; mb: number }> } | null>(null);
+  const [resetKey, setResetKey] = useState(0);
+
+  const handleReset = useCallback(async (target: string) => {
+    if (!confirm(`Reset ${target} data?`)) return;
+    await fetch("/api/stats/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target }),
+    });
+    setResetKey((k) => k + 1);
+    fetch("/api/stats/summary").then((r) => r.json()).then(setSummary).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch("/api/stats/summary")
@@ -149,7 +161,7 @@ export default function CardsSection({
       {/* Views chart */}
       <div className="border border-border mb-[28px]">
         <div className="px-[20px] py-[16px]">
-          <SingleChart apiUrl="/api/stats/views-chart" title={t("views")} icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path fillRule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z" clipRule="evenodd" /></svg>} />
+          <SingleChart key={`views-${resetKey}`} apiUrl="/api/stats/views-chart" title={t("views")} onReset={() => handleReset("views")} icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path fillRule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z" clipRule="evenodd" /></svg>} />
         </div>
       </div>
 

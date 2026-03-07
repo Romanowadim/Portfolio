@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/update-subs",
       "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/notifications/daily-summary",
+      "schedule": "0 21 * * *"
     }
   ]
 }
