@@ -25,6 +25,16 @@ const navItems = [
   { href: "/order", key: "order" },
 ] as const;
 
+function SummaryMsg({ message }: { message: string }) {
+  const match = message.match(/^(.*?Visitors\s*)\((\d+)\)(\s*Views\s*)\((\d+)\)(.*)$/);
+  if (!match) return <>{message}</>;
+  return (
+    <>
+      {match[1]}<span className="text-[#5596ea]">({match[2]})</span>{match[3]}<span className="text-[#5596ea]">({match[4]})</span>{match[5]}
+    </>
+  );
+}
+
 export default function Header() {
   const t = useTranslations("nav");
   const tAdmin = useTranslations("admin");
@@ -423,6 +433,8 @@ export default function Header() {
                                       <>Client click{(n.data?.count as number) > 1 && <span style={{ color: accentColor }}> ({n.data?.count as number})</span>} — {n.message}</>
                                     ) : n.type === "coworker_click" ? (
                                       <>Coworker click{(n.data?.count as number) > 1 && <span style={{ color: accentColor }}> ({n.data?.count as number})</span>} — {n.message}</>
+                                    ) : n.type === "daily_summary" ? (
+                                      <SummaryMsg message={n.message} />
                                     ) : (
                                       <>{n.message}{(n.data?.count as number) > 1 && <span style={{ color: accentColor }}> ({n.data?.count as number})</span>}</>
                                     )}
@@ -551,7 +563,7 @@ export default function Header() {
                     )}
                   </p>
                   <p className="text-[11px] font-medium tracking-[2.8px] text-[#787878] truncate leading-[16px] mt-[2px]">
-                    {n.type === "visit" ? "Someone visited the site" : n.type === "order" ? "Someone left an order" : n.type === "contact_click" ? n.message : n.message}
+                    {n.type === "visit" ? "Someone visited the site" : n.type === "order" ? "Someone left an order" : n.type === "daily_summary" ? <SummaryMsg message={n.message} /> : n.message}
                   </p>
                 </div>
               </motion.div>

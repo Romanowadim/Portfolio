@@ -36,7 +36,7 @@ export async function addNotification(n: Omit<Notification, "id" | "createdAt" |
   const notifications = await readNotifications();
 
   // Stack notifications by hour (except order — each order is unique)
-  if (n.type !== "order") {
+  if (n.type !== "order" && n.type !== "daily_summary") {
     const hourKey = currentHourKey();
     const stackKey = n.data?.artworkId || n.data?.contactId || undefined;
     const existing = notifications.find((x) =>

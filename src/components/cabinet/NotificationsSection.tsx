@@ -41,6 +41,17 @@ function formatDate(iso: string) {
   return { date, time };
 }
 
+function SummaryMessage({ message }: { message: string }) {
+  // Format: "[15:00] Visitors (7) Views (2)"
+  const match = message.match(/^(.*?Visitors\s*)\((\d+)\)(\s*Views\s*)\((\d+)\)(.*)$/);
+  if (!match) return <>{message}</>;
+  return (
+    <>
+      {match[1]}<span className="text-[#5596ea]">({match[2]})</span>{match[3]}<span className="text-[#5596ea]">({match[4]})</span>{match[5]}
+    </>
+  );
+}
+
 export default function NotificationsSection() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -274,12 +285,14 @@ export default function NotificationsSection() {
                       <>Client click{count && count > 1 && <span style={{ color: accent }}> ({count})</span>}</>
                     ) : n.type === "coworker_click" ? (
                       <>Coworker click{count && count > 1 && <span style={{ color: accent }}> ({count})</span>}</>
+                    ) : n.type === "daily_summary" ? (
+                      <SummaryMessage message={n.message} />
                     ) : (
                       <>{n.message}{count && count > 1 && <span style={{ color: accent }}> ({count})</span>}</>
                     )}
                   </p>
                   <p className="text-[12px] font-medium tracking-[1.2px] text-text-light uppercase mt-[2px] truncate">
-                    {n.message}
+                    {n.type === "daily_summary" ? "Summary stat" : n.message}
                   </p>
                 </div>
 

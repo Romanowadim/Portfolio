@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readVisits } from "@/lib/visits";
 import { readStats } from "@/lib/stats";
 import { addNotification } from "@/lib/notifications";
+import { sendTelegram } from "@/lib/telegram";
 
 function dateKey(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -16,6 +17,9 @@ export async function GET(req: NextRequest) {
   }
 
   const now = new Date();
+  // Moscow time (UTC+3)
+  const mskHour = (now.getUTCHours() + 3) % 24;
+  const time = mskHour <= 15 ? "15:00" : "21:00";
   const todayPrefix = dateKey(now);
 
   const [visits, stats] = await Promise.all([readVisits(), readStats()]);
@@ -35,9 +39,11 @@ export async function GET(req: NextRequest) {
 
   await addNotification({
     type: "daily_summary",
-    message: `Daily summary: ${todayVisitors} visitors, ${todayArtworkViews} artwork views`,
+    message: `[${time}] Visitors (${todayVisitors}) Views (${todayArtworkViews})`,
     data: { todayVisitors, todayArtworkViews },
   });
+
+  await sendTelegram(`<b>[${time}]</b> Visitors: <b>${todayVisitors}</b> | Views: <b>${todayArtworkViews}</b>`);
 
   return NextResponse.json({ ok: true, todayVisitors, todayArtworkViews });
 }
