@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { withFileLock } from "./file-lock";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const CATEGORY_VIEWS_FILE = path.join(DATA_DIR, "category-views.json");
@@ -22,14 +23,16 @@ export async function writeCategoryViews(data: CategoryViews): Promise<void> {
   await writeFile(CATEGORY_VIEWS_FILE, JSON.stringify(data, null, 2), "utf-8");
 }
 
-export async function recordCategoryView(key: string, visitorId: string): Promise<void> {
-  const data = await readCategoryViews();
-  const entries = data[key] ?? [];
-  if (!entries.some((v) => v.id === visitorId)) {
-    entries.push({ id: visitorId, at: new Date().toISOString() });
-    data[key] = entries;
-    await writeCategoryViews(data);
-  }
+export function recordCategoryView(key: string, visitorId: string): Promise<void> {
+  return withFileLock(CATEGORY_VIEWS_FILE, async () => {
+    const data = await readCategoryViews();
+    const entries = data[key] ?? [];
+    if (!entries.some((v) => v.id === visitorId)) {
+      entries.push({ id: visitorId, at: new Date().toISOString() });
+      data[key] = entries;
+      await writeCategoryViews(data);
+    }
+  });
 }
 
 export function getCategoryViewCounts(

@@ -6,10 +6,24 @@ const visitors: Map<string, VisitorEntry> =
   (globalThis as Record<string, unknown>).__onlineVisitors as Map<string, VisitorEntry> ??
   ((globalThis as Record<string, unknown>).__onlineVisitors = new Map<string, VisitorEntry>());
 const TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const MAX_VISITORS = 10_000; // Safety cap
+const RATE_LIMIT_MS = 10_000; // Min 10s between heartbeats per IP
 
-export function markOnline(id: string, page?: string, country?: string): void {
+export function markOnline(id: string, page?: string, country?: string): boolean {
+  const now = Date.now();
   const existing = visitors.get(id);
-  visitors.set(id, { ts: Date.now(), page: page || "/", country: country || existing?.country || "" });
+
+  // Rate limit: skip if last heartbeat was less than 10s ago
+  if (existing && now - existing.ts < RATE_LIMIT_MS) return false;
+
+  // Safety cap: don't grow unbounded
+  if (!existing && visitors.size >= MAX_VISITORS) {
+    cleanup();
+    if (visitors.size >= MAX_VISITORS) return false;
+  }
+
+  visitors.set(id, { ts: now, page: page || "/", country: country || existing?.country || "" });
+  return true;
 }
 
 function cleanup() {
@@ -17,6 +31,12 @@ function cleanup() {
   for (const [key, v] of visitors) {
     if (v.ts < cutoff) visitors.delete(key);
   }
+}
+
+// Periodic cleanup instead of only on-read
+const cleanupTimer = (globalThis as Record<string, unknown>).__onlineCleanupTimer as ReturnType<typeof setInterval> | undefined;
+if (!cleanupTimer) {
+  (globalThis as Record<string, unknown>).__onlineCleanupTimer = setInterval(cleanup, 60_000);
 }
 
 export function getOnlineCount(): number {

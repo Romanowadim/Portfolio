@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { withFileLock } from "./file-lock";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const FILE = path.join(DATA_DIR, "social-clicks.json");
@@ -21,12 +22,14 @@ export async function writeSocialClicks(data: ClickData): Promise<void> {
   await writeFile(FILE, JSON.stringify(data, null, 2), "utf-8");
 }
 
-export async function recordSocialClick(name: string): Promise<void> {
-  const data = await readSocialClicks();
-  const entries = data[name] ?? [];
-  entries.push({ at: new Date().toISOString() });
-  data[name] = entries;
-  await writeSocialClicks(data);
+export function recordSocialClick(name: string): Promise<void> {
+  return withFileLock(FILE, async () => {
+    const data = await readSocialClicks();
+    const entries = data[name] ?? [];
+    entries.push({ at: new Date().toISOString() });
+    data[name] = entries;
+    await writeSocialClicks(data);
+  });
 }
 
 export function getSocialClickCounts(

@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { withFileLock } from "./file-lock";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const CLICKS_FILE = path.join(DATA_DIR, "contact-clicks.json");
@@ -21,12 +22,14 @@ export async function writeContactClicks(data: ClickData): Promise<void> {
   await writeFile(CLICKS_FILE, JSON.stringify(data, null, 2), "utf-8");
 }
 
-export async function recordContactClick(id: string): Promise<void> {
-  const data = await readContactClicks();
-  const entries = data[id] ?? [];
-  entries.push({ at: new Date().toISOString() });
-  data[id] = entries;
-  await writeContactClicks(data);
+export function recordContactClick(id: string): Promise<void> {
+  return withFileLock(CLICKS_FILE, async () => {
+    const data = await readContactClicks();
+    const entries = data[id] ?? [];
+    entries.push({ at: new Date().toISOString() });
+    data[id] = entries;
+    await writeContactClicks(data);
+  });
 }
 
 export function getContactClickCounts(

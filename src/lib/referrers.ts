@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { withFileLock } from "./file-lock";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const REFERRERS_FILE = path.join(DATA_DIR, "referrers.json");
@@ -14,18 +15,17 @@ export async function readReferrers(): Promise<Record<string, number>> {
   }
 }
 
-export async function logReferrer(referer: string): Promise<void> {
-  if (!referer) return;
+export function logReferrer(referer: string): Promise<void> {
+  if (!referer) return Promise.resolve();
+  let host: string;
   try {
-    const url = new URL(referer);
-    const host = url.hostname.replace(/^www\./, "");
-    // Skip self-referrals
-    if (!host || host === "localhost") return;
+    host = new URL(referer).hostname.replace(/^www\./, "");
+  } catch { return Promise.resolve(); }
+  if (!host || host === "localhost") return Promise.resolve();
+  return withFileLock(REFERRERS_FILE, async () => {
     const data = await readReferrers();
     data[host] = (data[host] ?? 0) + 1;
     await mkdir(DATA_DIR, { recursive: true });
     await writeFile(REFERRERS_FILE, JSON.stringify(data), "utf-8");
-  } catch {
-    // Invalid URL or write error — skip
-  }
+  });
 }

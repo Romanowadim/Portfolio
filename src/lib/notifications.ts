@@ -4,6 +4,9 @@ import path from "path";
 const DATA_DIR = path.join(process.cwd(), "data");
 const FILE = path.join(DATA_DIR, "notifications.json");
 
+import { withFileLock } from "./file-lock";
+const withLock = <T>(fn: () => Promise<T>) => withFileLock(FILE, fn);
+
 export type Notification = {
   id: string;
   type: "visit" | "order" | "view" | "contact_click" | "coworker_click" | "daily_summary";
@@ -32,67 +35,72 @@ function currentHourKey(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T${String(now.getHours()).padStart(2, "0")}`;
 }
 
-export async function addNotification(n: Omit<Notification, "id" | "createdAt" | "read">): Promise<Notification> {
-  const notifications = await readNotifications();
+export function addNotification(n: Omit<Notification, "id" | "createdAt" | "read">): Promise<Notification> {
+  return withLock(async () => {
+    const notifications = await readNotifications();
 
-  // Stack notifications by hour (except order — each order is unique)
-  if (n.type !== "order" && n.type !== "daily_summary") {
-    const hourKey = currentHourKey();
-    const stackKey = n.data?.artworkId || n.data?.contactId || undefined;
-    const existing = notifications.find((x) =>
-      x.type === n.type && x.data?.hourKey === hourKey &&
-      (stackKey ? (x.data?.artworkId === stackKey || x.data?.contactId === stackKey) : !x.data?.artworkId && !x.data?.contactId)
-    );
-    if (existing) {
-      const count = ((existing.data?.count as number) || 1) + 1;
-      existing.data = { ...existing.data, count, hourKey };
-      if (n.type === "visit") {
-        existing.message = `New visitors (${count})`;
-      } else if (n.type === "view") {
-        existing.message = n.message; // keep latest artwork name
-      } else {
-        existing.message = n.message;
+    // Stack notifications by hour (except order — each order is unique)
+    if (n.type !== "order" && n.type !== "daily_summary") {
+      const hourKey = currentHourKey();
+      const stackKey = n.data?.artworkId || n.data?.contactId || undefined;
+      const existing = notifications.find((x) =>
+        x.type === n.type && x.data?.hourKey === hourKey &&
+        (stackKey ? (x.data?.artworkId === stackKey || x.data?.contactId === stackKey) : !x.data?.artworkId && !x.data?.contactId)
+      );
+      if (existing) {
+        const count = ((existing.data?.count as number) || 1) + 1;
+        existing.data = { ...existing.data, count, hourKey };
+        if (n.type === "visit") {
+          existing.message = `New visitors (${count})`;
+        } else if (n.type === "view") {
+          existing.message = n.message; // keep latest artwork name
+        } else {
+          existing.message = n.message;
+        }
+        existing.createdAt = new Date().toISOString();
+        existing.read = false;
+        const idx = notifications.indexOf(existing);
+        if (idx > 0) { notifications.splice(idx, 1); notifications.unshift(existing); }
+        await save(notifications);
+        notifySubscribers(existing);
+        return existing;
       }
-      existing.createdAt = new Date().toISOString();
-      existing.read = false;
-      const idx = notifications.indexOf(existing);
-      if (idx > 0) { notifications.splice(idx, 1); notifications.unshift(existing); }
-      await save(notifications);
-      notifySubscribers(existing);
-      return existing;
+      n = { ...n, data: { ...n.data, count: 1, hourKey } };
     }
-    n = { ...n, data: { ...n.data, count: 1, hourKey } };
-  }
 
-  const entry: Notification = {
-    ...n,
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-    createdAt: new Date().toISOString(),
-    read: false,
-  };
-  notifications.unshift(entry);
-  // Keep only last 100 notifications
-  if (notifications.length > 100) notifications.length = 100;
-  await save(notifications);
-  notifySubscribers(entry);
-  return entry;
+    const entry: Notification = {
+      ...n,
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+    notifications.unshift(entry);
+    if (notifications.length > 100) notifications.length = 100;
+    await save(notifications);
+    notifySubscribers(entry);
+    return entry;
+  });
 }
 
-export async function markAllRead(): Promise<void> {
-  const notifications = await readNotifications();
-  for (const n of notifications) n.read = true;
-  await save(notifications);
+export function markAllRead(): Promise<void> {
+  return withLock(async () => {
+    const notifications = await readNotifications();
+    for (const n of notifications) n.read = true;
+    await save(notifications);
+  });
 }
 
-export async function markRead(id: string): Promise<void> {
-  const notifications = await readNotifications();
-  const n = notifications.find((x) => x.id === id);
-  if (n) n.read = true;
-  await save(notifications);
+export function markRead(id: string): Promise<void> {
+  return withLock(async () => {
+    const notifications = await readNotifications();
+    const n = notifications.find((x) => x.id === id);
+    if (n) n.read = true;
+    await save(notifications);
+  });
 }
 
-export async function clearAll(): Promise<void> {
-  await save([]);
+export function clearAll(): Promise<void> {
+  return withLock(() => save([]));
 }
 
 export async function getUnreadCount(): Promise<number> {

@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { withFileLock } from "./file-lock";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const FILE = path.join(DATA_DIR, "order-clicks.json");
@@ -13,11 +14,13 @@ export async function readOrderClicks(): Promise<Record<string, number>> {
   }
 }
 
-export async function incrementOrderClick(): Promise<void> {
-  const data = await readOrderClicks();
-  const now = new Date();
-  const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  data[key] = (data[key] ?? 0) + 1;
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(FILE, JSON.stringify(data), "utf-8");
+export function incrementOrderClick(): Promise<void> {
+  return withFileLock(FILE, async () => {
+    const data = await readOrderClicks();
+    const now = new Date();
+    const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    data[key] = (data[key] ?? 0) + 1;
+    await mkdir(DATA_DIR, { recursive: true });
+    await writeFile(FILE, JSON.stringify(data), "utf-8");
+  });
 }

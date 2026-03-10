@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { withFileLock } from "./file-lock";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const FILE = path.join(DATA_DIR, "geo-visits.json");
@@ -55,17 +56,19 @@ export async function readGeoVisits(period: GeoPeriod = "all"): Promise<Record<s
   return result;
 }
 
-export async function logGeoVisit(countryCode: string): Promise<void> {
-  if (!countryCode || countryCode.length !== 2) return;
-  const store = await readStore();
-  const now = new Date();
-  const key = [
-    now.getFullYear(),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-") + "T" + String(now.getHours()).padStart(2, "0");
-  if (!store[key]) store[key] = {};
-  store[key][countryCode] = (store[key][countryCode] ?? 0) + 1;
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(FILE, JSON.stringify(store), "utf-8");
+export function logGeoVisit(countryCode: string): Promise<void> {
+  if (!countryCode || countryCode.length !== 2) return Promise.resolve();
+  return withFileLock(FILE, async () => {
+    const store = await readStore();
+    const now = new Date();
+    const key = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-") + "T" + String(now.getHours()).padStart(2, "0");
+    if (!store[key]) store[key] = {};
+    store[key][countryCode] = (store[key][countryCode] ?? 0) + 1;
+    await mkdir(DATA_DIR, { recursive: true });
+    await writeFile(FILE, JSON.stringify(store), "utf-8");
+  });
 }

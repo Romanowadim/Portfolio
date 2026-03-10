@@ -1,5 +1,6 @@
 import { readFile, writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { withFileLock } from "./file-lock";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const STATS_FILE = path.join(DATA_DIR, "stats.json");
@@ -38,14 +39,16 @@ export async function writeStats(stats: Stats): Promise<void> {
   await writeFile(STATS_FILE, JSON.stringify(stats, null, 2), "utf-8");
 }
 
-export async function recordView(artworkId: string, visitorId: string): Promise<void> {
-  const stats = await readStats();
-  const entries = (stats[artworkId] ?? []).map(normalize);
-  if (!entries.some((v) => v.id === visitorId)) {
-    entries.push({ id: visitorId, at: new Date().toISOString() });
-    stats[artworkId] = entries;
-    await writeStats(stats);
-  }
+export function recordView(artworkId: string, visitorId: string): Promise<void> {
+  return withFileLock(STATS_FILE, async () => {
+    const stats = await readStats();
+    const entries = (stats[artworkId] ?? []).map(normalize);
+    if (!entries.some((v) => v.id === visitorId)) {
+      entries.push({ id: visitorId, at: new Date().toISOString() });
+      stats[artworkId] = entries;
+      await writeStats(stats);
+    }
+  });
 }
 
 export function getViewCounts(

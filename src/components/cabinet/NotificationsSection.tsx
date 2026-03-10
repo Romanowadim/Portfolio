@@ -61,9 +61,17 @@ export default function NotificationsSection() {
 
   // Load current artworks, contacts, coworkers for live thumbnails
   useEffect(() => {
-    fetch("/api/artworks").then((r) => r.json()).then((data: Artwork[]) => { if (Array.isArray(data)) setDynamicArtworks(data); }).catch(() => {});
-    fetch("/api/contacts").then((r) => r.json()).then((data: Contact[]) => { if (Array.isArray(data)) setContacts(data); }).catch(() => {});
-    fetch("/api/coworkers").then((r) => r.json()).then((data: Coworker[]) => { if (Array.isArray(data)) setCoworkers(data); }).catch(() => {});
+    const ac = new AbortController();
+    Promise.all([
+      fetch("/api/artworks", { signal: ac.signal }).then((r) => r.json()).catch(() => []),
+      fetch("/api/contacts", { signal: ac.signal }).then((r) => r.json()).catch(() => []),
+      fetch("/api/coworkers", { signal: ac.signal }).then((r) => r.json()).catch(() => []),
+    ]).then(([arts, contacts, coworkers]) => {
+      if (Array.isArray(arts)) setDynamicArtworks(arts);
+      if (Array.isArray(contacts)) setContacts(contacts);
+      if (Array.isArray(coworkers)) setCoworkers(coworkers);
+    });
+    return () => ac.abort();
   }, []);
 
   // Build a map of id -> current thumbnail/avatar
@@ -77,7 +85,8 @@ export default function NotificationsSection() {
   }, [dynamicArtworks, contacts, coworkers]);
 
   useEffect(() => {
-    fetch("/api/notifications")
+    const ac = new AbortController();
+    fetch("/api/notifications", { signal: ac.signal })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setNotifications(data);
@@ -85,22 +94,41 @@ export default function NotificationsSection() {
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    const es = new EventSource("/api/notifications/stream");
-    es.onmessage = (event) => {
-      try {
-        const n: Notification = JSON.parse(event.data);
-        setNotifications((prev) => {
-          const idx = prev.findIndex((x) => x.id === n.id);
-          if (idx >= 0) {
-            const updated = [...prev];
-            updated.splice(idx, 1);
-            return [n, ...updated].slice(0, 100);
-          }
-          return [n, ...prev].slice(0, 100);
-        });
-      } catch {}
+    let es: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let disposed = false;
+
+    const connect = () => {
+      if (disposed) return;
+      es = new EventSource("/api/notifications/stream");
+      es.onmessage = (event) => {
+        try {
+          const n: Notification = JSON.parse(event.data);
+          setNotifications((prev) => {
+            const idx = prev.findIndex((x) => x.id === n.id);
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated.splice(idx, 1);
+              return [n, ...updated].slice(0, 100);
+            }
+            return [n, ...prev].slice(0, 100);
+          });
+        } catch {}
+      };
+      es.onerror = () => {
+        es?.close();
+        clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connect, 5000);
+      };
     };
-    return () => es.close();
+    connect();
+
+    return () => {
+      disposed = true;
+      ac.abort();
+      es?.close();
+      clearTimeout(reconnectTimer);
+    };
   }, []);
 
   const handleMarkAllRead = useCallback(() => {

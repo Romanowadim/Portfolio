@@ -51,6 +51,7 @@ export default function Header() {
     return false;
   });
   const soundMutedRef = useRef(soundMuted);
+  const audioCtxRef = useRef<AudioContext | null>(null);
   useEffect(() => { soundMutedRef.current = soundMuted; }, [soundMuted]);
   const toggleMute = useCallback(() => {
     setSoundMuted((prev) => {
@@ -65,11 +66,14 @@ export default function Header() {
   const [thumbData, setThumbData] = useState<{ id: string; thumbnail?: string; image?: string; clientAvatar?: string; avatar?: string }[]>([]);
   useEffect(() => {
     if (!isAdmin) return;
+    let ac = new AbortController();
     const load = () => {
+      ac.abort();
+      ac = new AbortController();
       Promise.all([
-        fetch("/api/artworks").then((r) => r.json()).catch(() => []),
-        fetch("/api/contacts").then((r) => r.json()).catch(() => []),
-        fetch("/api/coworkers").then((r) => r.json()).catch(() => []),
+        fetch("/api/artworks", { signal: ac.signal }).then((r) => r.json()).catch(() => []),
+        fetch("/api/contacts", { signal: ac.signal }).then((r) => r.json()).catch(() => []),
+        fetch("/api/coworkers", { signal: ac.signal }).then((r) => r.json()).catch(() => []),
       ]).then(([arts, contacts, coworkers]) => {
         const items: typeof thumbData = [];
         if (Array.isArray(arts)) for (const a of arts) items.push({ id: a.id, thumbnail: a.thumbnail, image: a.image });
@@ -79,10 +83,9 @@ export default function Header() {
       });
     };
     load();
-    // Refresh when notifications change (new artwork view etc.)
     const handler = () => load();
     window.addEventListener("notif-thumb-refresh", handler);
-    return () => window.removeEventListener("notif-thumb-refresh", handler);
+    return () => { window.removeEventListener("notif-thumb-refresh", handler); ac.abort(); };
   }, [isAdmin]);
 
   const thumbMap = useMemo(() => {
@@ -110,9 +113,11 @@ export default function Header() {
 
     // SSE stream for new notifications
     let es: EventSource | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout>;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+    let disposed = false;
 
     const connect = () => {
+      if (disposed) return;
       es = new EventSource("/api/notifications/stream");
       es.onmessage = async (event) => {
         try {
@@ -138,11 +143,11 @@ export default function Header() {
           });
           lastSeenIdRef.current = n.id;
           if (!soundMutedRef.current) try {
-            console.log("[notif] playing sound for", n.type);
-            const ctx = new AudioContext();
-            console.log("[notif] AudioContext state:", ctx.state);
+            if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+              audioCtxRef.current = new AudioContext();
+            }
+            const ctx = audioCtxRef.current;
             if (ctx.state === "suspended") await ctx.resume();
-            console.log("[notif] AudioContext state after resume:", ctx.state);
             const now = ctx.currentTime;
             if (n.type === "order") {
               const hit = ctx.createOscillator();
@@ -223,12 +228,14 @@ export default function Header() {
       };
       es.onerror = () => {
         es?.close();
+        clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(connect, 5000);
       };
     };
     connect();
 
     return () => {
+      disposed = true;
       es?.close();
       clearTimeout(reconnectTimer);
     };

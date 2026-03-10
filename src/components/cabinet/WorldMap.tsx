@@ -52,26 +52,33 @@ export default function WorldMap({ className }: Props) {
   const [countryCenters, setCountryCenters] = useState<Record<string, { cx: number; cy: number }>>({});
 
   useEffect(() => {
-    fetch(`/api/stats/geo-visits?period=${period}`)
+    const ac = new AbortController();
+    fetch(`/api/stats/geo-visits?period=${period}`, { signal: ac.signal })
       .then((r) => r.json())
       .then((data) => { if (data && typeof data === "object" && !data.error) setGeoData(data); })
       .catch(() => {});
+    return () => ac.abort();
   }, [period]);
 
   useEffect(() => {
-    fetch("/api/stats/geo-visits?period=all")
+    const ac = new AbortController();
+    fetch("/api/stats/geo-visits?period=all", { signal: ac.signal })
       .then((r) => r.json())
       .then((data) => { if (data && typeof data === "object" && !data.error) setAllData(data); })
       .catch(() => {});
-    fetch("/api/stats/geo-visits?period=day")
+    fetch("/api/stats/geo-visits?period=day", { signal: ac.signal })
       .then((r) => r.json())
       .then((data) => { if (data && typeof data === "object" && !data.error) setDayData(data); })
       .catch(() => {});
+    return () => ac.abort();
   }, []);
 
   useEffect(() => {
+    let ac = new AbortController();
     const fetchOnline = () => {
-      fetch("/api/stats/online")
+      ac.abort();
+      ac = new AbortController();
+      fetch("/api/stats/online", { signal: ac.signal })
         .then((r) => r.json())
         .then((data) => {
           if (typeof data?.count === "number") setOnline(data.count);
@@ -81,7 +88,7 @@ export default function WorldMap({ className }: Props) {
     };
     fetchOnline();
     const interval = setInterval(fetchOnline, 15_000);
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); ac.abort(); };
   }, []);
 
 

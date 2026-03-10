@@ -31,26 +31,31 @@ export default function StatisticSection() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/stats/summary")
+    const ac = new AbortController();
+    fetch("/api/stats/summary", { signal: ac.signal })
       .then((r) => r.json())
       .then(setSummary)
       .catch(() => {});
-    fetch("/api/stats/referrers")
+    fetch("/api/stats/referrers", { signal: ac.signal })
       .then((r) => r.json())
       .then((data) => { if (Array.isArray(data)) setReferrers(data); })
       .catch(() => {});
+    return () => ac.abort();
   }, []);
 
   useEffect(() => {
+    let ac = new AbortController();
     const fetchOnline = () => {
-      fetch("/api/stats/online-pages")
+      ac.abort();
+      ac = new AbortController();
+      fetch("/api/stats/online-pages", { signal: ac.signal })
         .then((r) => r.json())
         .then((data) => { if (Array.isArray(data)) setOnlinePages(data); })
         .catch(() => {});
     };
     fetchOnline();
     const interval = setInterval(fetchOnline, 15_000);
-    return () => clearInterval(interval);
+    return () => { clearInterval(interval); ac.abort(); };
   }, []);
 
   return (
